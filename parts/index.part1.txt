@@ -1,0 +1,294 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Симулятор удара мяча</title>
+<style>
+:root{--bg:#ebe2d1;--panel:#f6f0e5;--ink:#221c15;--line:#d7c8af;--ac:#b5491b}
+*{box-sizing:border-box}body{margin:0;font-family:"IBM Plex Sans","Segoe UI",sans-serif;color:var(--ink);background:linear-gradient(160deg,#e8decc 0%,#efe7d8 60%,#e2d7c2 100%)}
+.app{display:grid;grid-template-columns:380px 1fr;min-height:100vh}.panel{padding:12px;background:var(--panel);border-right:1px solid var(--line);overflow:auto}
+h1{margin:0 0 10px;font-size:1.25rem}h2{margin:10px 0 8px;font-size:1rem}h3{margin:10px 0 8px;font-size:.92rem}.small{font-size:.78rem;color:#5e5345}
+label{display:block;font-size:.83rem;margin:0 0 6px}input,select,button{width:100%;margin-top:2px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:#fff;color:var(--ink)}button{cursor:pointer}
+button.primary{background:var(--ac);border-color:#933713;color:#fff;font-weight:600}.r2{display:grid;grid-template-columns:1fr 1fr;gap:6px}.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.checks{display:grid;gap:3px;margin-top:4px}.tw{border:1px solid var(--line);border-radius:8px;overflow:auto;background:#fffdf9}
+table{width:100%;min-width:1550px;border-collapse:collapse;font-size:.72rem}th,td{border-bottom:1px solid #eadfc9;padding:4px;text-align:left}td input,td select,td button{padding:4px;margin:0;font-size:.72rem}
+.mini{width:auto;min-width:24px;padding:2px 6px;display:inline-block}.mini.danger{border-color:#a63b30;color:#a63b30;background:#fff5f2}
+.hint{min-height:1.1em;font-size:.78rem;margin:5px 0}.main{padding:12px;display:grid;gap:10px}.box{background:rgba(255,255,255,.58);border:1px solid var(--line);border-radius:11px;padding:10px}
+#viz{width:100%;max-width:1160px;height:auto;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,#fff9ee 0%,#f3e9d8 100%)}
+.timeline{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:8px}.timeline span{font-size:.78rem;color:#5d5244;min-width:90px;text-align:right}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px}.m{border:1px solid #e8dbc2;border-radius:8px;background:#fffdf8;padding:7px}.m .k{font-size:.74rem;color:#5a4f42}.m .v{font-weight:650}
+.cg{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:10px}canvas[id^="chart"]{width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#fffdf7}
+#checks{white-space:pre-wrap;border:1px solid var(--line);border-radius:8px;background:#fffdf7;padding:8px;min-height:56px;font-size:.78rem}
+@media(max-width:1100px){.app{grid-template-columns:1fr}.panel{border-right:none;border-bottom:1px solid var(--line);max-height:56vh}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="panel">
+<h1>Симулятор удара мяча (Single-file JS)</h1>
+<p class="small">Клик по canvas: пауза/продолжение</p>
+<section>
+<h2>Действия</h2>
+<div class="r2"><button id="run" class="primary">Запустить</button><button id="save">Сравнить</button></div>
+<div class="r2"><button id="scaleBtn">Масштаб: 100%</button><button id="checkBtn">Самопроверка</button></div>
+</section>
+<section>
+<h2>1) Параметры столкновения</h2>
+<div class="r2">
+<label>Скорость, м/с <input id="speed" type="number" step="0.1" value="11" /></label>
+<label>Угол атаки, ° <input id="angle" type="number" step="1" value="35" /></label>
+</div>
+<div class="r2">
+<label>Spin, об/с <input id="spin" type="number" step="1" value="120" /></label>
+<label>Направление <select id="spinDir"><option value="1">Верхнее</option><option value="-1">Нижнее</option></select></label>
+</div>
+</section>
+<section>
+<h2>2) Свойства мяча</h2>
+<div class="r2">
+<label>Тип <select id="ballType"><option value="h">Полый</option><option value="s">Сплошной</option></select></label>
+<label>Радиус, мм <input id="radius" type="number" step="0.1" value="20" /></label>
+</div>
+<div class="r2">
+<label>Жесткость <input id="ballK" type="number" step="100" value="62000" /></label>
+<label>Демпфирование <input id="ballC" type="number" step="0.1" value="10.5" /></label>
+</div>
+</section>
+<section>
+<h2>3) Слои поверхности (порядок: основание -> верх)</h2>
+<div class="r2">
+<select id="preset"><option value="classic">ТТ: дерево-карбон-дерево-губка-топшит</option><option value="inv">ТТ: шипы внутрь</option><option value="hard">Жесткая поверхность</option></select>
+<button id="presetBtn">Пресет</button>
+</div>
+<div class="r2">
+<label>Глобальный множитель трения μ (0.20..1.50) <input id="frMul" type="number" min="0.20" max="1.50" step="0.01" value="1.00" /></label>
+<label>Быстрая регулировка трения <input id="frMulRange" type="range" min="0.20" max="1.50" step="0.01" value="1.00" /></label>
+</div>
+<p class="small">1.00 = базовое трение, меньше 1.00 - более скользко, больше 1.00 - более цепко.</p>
+<div class="tw"><table id="layers"><thead><tr><th>Удалить</th><th>Материал слоя</th><th>Толщина t, мм</th><th>Нормальная жесткость k_n, Н/м</th><th>Нормальное демпфирование c_n, Н·с/м</th><th>Тангенциальная жесткость k_t, Н/м</th><th>Тангенциальное демпфирование c_t, Н·с/м</th><th>Коэф. статич. трения μ_s</th><th>Коэф. кинетич. трения μ_k</th><th>Режим шипов</th><th>Жесткость шипов k_sh</th><th>Высота шипов h, мм</th><th>Порядок слоя</th></tr></thead><tbody></tbody></table></div>
+<button id="add">+ Добавить слой</button><p id="valid" class="hint"></p>
+</section>
+<section>
+<div class="r2"><label>Качество <select id="quality"><option value="n">normal</option><option value="h">high</option></select></label><label>Скорость анимации <input id="animSpeed" type="range" min="0.001" max="0.100" step="0.001" value="0.005" /></label></div>
+<div class="checks"><label><input type="checkbox" id="vVec" checked /> Векторы</label><label><input type="checkbox" id="vPr" checked /> Давление</label><label><input type="checkbox" id="vPatch" checked /> Пятно контакта</label></div>
+</section>
+</aside>
+<main class="main">
+<section class="box"><canvas id="viz" width="1160" height="520"></canvas><div class="timeline"><input id="slider" type="range" min="0" max="0" step="1" value="0" /><span id="slLabel">0 / 0</span></div></section>
+<section class="box"><h2>Итоги</h2><div id="metrics" class="metrics"></div><h3>Сравнение</h3><div id="cmp"></div><h3>Проверки</h3><pre id="checks"></pre></section>
+<section class="box"><h2>Графики</h2><div class="cg"><canvas id="chartF" width="520" height="220"></canvas><canvas id="chartK" width="520" height="220"></canvas></div></section>
+</main>
+</div>
+<script>
+(() => {
+const K = {
+  // Math helpers
+  TAU: Math.PI * 2, // полный оборот, рад
+  DEG_TO_RAD: Math.PI / 180, // градусы -> радианы
+  RAD_TO_DEG: 180 / Math.PI, // радианы -> градусы
+  HALF: 0.5, // коэффициент 1/2
+  TWO: 2, // коэффициент 2
+
+  // Input defaults and clamps
+  SPEED_MIN: 0.2, // минимальная скорость, м/с
+  SPEED_DEFAULT: 11, // скорость по умолчанию, м/с
+  ANGLE_DEFAULT_DEG: 35, // угол по умолчанию, градусы
+  ANGLE_MIN_DEG: 1, // минимальный угол, градусы
+  ANGLE_MAX_DEG: 89, // максимальный угол, градусы
+  ANGLE_LABEL_FALLBACK: 0, // fallback угла в подписи
+  SPIN_DEFAULT_RPS: 120, // spin по умолчанию, об/с
+  FRICTION_MUL_MIN: 0.2, // минимум глобального множителя трения
+  FRICTION_MUL_MAX: 1.5, // максимум глобального множителя трения
+  FRICTION_MUL_DIGITS: 2, // знаков после запятой для отображения множителя
+  VIEW_SCALE_DEFAULT: 1, // масштаб по умолчанию
+  BALL_RADIUS_DEFAULT_MM: 20, // радиус по умолчанию, мм
+  BALL_RADIUS_MIN_MM: 10, // минимум радиуса, мм
+  BALL_RADIUS_MAX_MM: 30, // максимум радиуса, мм
+  MM_TO_M: 0.001, // перевод мм -> м
+  BALL_MASS_HOLLOW: 0.0027, // масса полого мяча, кг
+  BALL_MASS_SOLID: 0.014, // масса сплошного мяча, кг
+  BALL_INERTIA_HOLLOW: 0.67, // фактор момента инерции полого мяча
+  BALL_INERTIA_SOLID: 0.4, // фактор момента инерции сплошного мяча
+  BALL_K_MIN: 1000, // минимальная жесткость мяча
+  BALL_K_DEFAULT: 62000, // жесткость мяча по умолчанию
+  BALL_C_MIN: 0, // минимальное демпфирование мяча
+  BALL_C_DEFAULT: 10.5, // демпфирование мяча по умолчанию
+
+  // Validation
+  LAYERS_MIN_COUNT: 1, // минимальное количество слоев
+  LAYER_MIN_THICKNESS: 0, // минимальная толщина слоя, мм
+  LAYER_MIN_STIFFNESS: 0, // минимальная жесткость слоя
+  LAYER_MIN_DAMPING: 0, // минимальное демпфирование слоя
+  LAYER_MIN_MU: 0, // минимальный коэффициент трения
+  PARSE_INT_BASE: 10, // основание для parseInt
+  LAYER_STEP_T: 0.1, // шаг изменения толщины слоя
+  LAYER_STEP_KN: 1000, // шаг изменения нормальной жесткости
+  LAYER_STEP_CN: 1, // шаг изменения нормального демпфирования
+  LAYER_STEP_KT: 1000, // шаг изменения тангенциальной жесткости
+  LAYER_STEP_CT: 1, // шаг изменения тангенциального демпфирования
+  LAYER_STEP_MU: 0.01, // шаг изменения коэффициентов трения
+  LAYER_STEP_PK: 5, // шаг изменения жесткости шипов
+  LAYER_STEP_PH: 0.1, // шаг изменения высоты шипов
+
+  // Simulation - time and mesh
+  SIM_DT_HIGH: 1.2e-5, // шаг времени (high)
+  SIM_DT_NORMAL: 2e-5, // шаг времени (normal)
+  SIM_FRAME_DT_HIGH: 8e-5, // шаг сохранения кадров (high)
+  SIM_FRAME_DT_NORMAL: 1.1e-4, // шаг сохранения кадров (normal)
+  SIM_MAX_T: 0.024, // максимальная длительность контакта, с
+  SIM_N_HIGH: 241, // число узлов по X (high)
+  SIM_N_NORMAL: 161, // число узлов по X (normal)
+  SIM_HALF_WIDTH: 0.08, // половина ширины моделируемой поверхности, м
+  SIM_MIN_VY_IN: 0.1, // минимальная входная нормальная скорость, м/с
+  GRAVITY: 9.81, // ускорение свободного падения, м/с^2
+  PRECONTACT_PX: 180, // длина подлета до удара в пикселях (при масштабе 1)
+  PRECONTACT_TIME_MAX: 0.004, // максимум времени подлета, с (ограничение по скорости)
+  SIM_UX_LIM_FACTOR: 0.42, // ограничение горизонтального смещения
+  SIM_UX_LIM_MIN: 2e-4, // минимальный предел для ux
+  SIM_UY_LIM: 0.006, // предел вертикального смещения узлов, м
+  SIM_FN_CAP_MIN: 120, // минимальный кап Fn
+  SIM_FN_CAP_VY_BIAS: 6, // добавка скорости для расчета капа Fn
+  SIM_FN_CAP_FACTOR: 0.11, // масштаб капа Fn
+  SIM_KE_CAP_FACTOR: 0.999, // кап энергии на контакте
+  SIM_CONTACT_RADIUS_EXTRA: 3, // запас по радиусу контакта (в узлах)
+  SIM_CONTACT_R_MARGIN: 1.02, // доп. запас по радиусу контакта
+  SIM_HERTZ_EXP: 1.35, // показатель в контактном законе
+  SIM_STICK_DECAY: 0.985, // релаксация накопленного stick
+  SIM_TILT_MS_GAIN: 0.14, // усиление mu_s от наклона шипов
+  SIM_TILT_MK_GAIN: 0.08, // усиление mu_k от наклона шипов
+  SIM_TILT_OUT_SCALE: 0.65, // масштаб наклона для шипов внутрь
+  SIM_TILT_FORCE_GAIN: 0.12, // усиление касательной силы от наклона
+  SIM_PRESSURE_EPS: 1e-8, // epsilon для давления
+  SIM_PRESSURE_DX_SCALE: 0.012, // масштаб площади контакта по dx
+  SIM_NO_CONTACT_BREAK: 8, // число шагов без контакта до отрыва
+  SIM_DETACH_Y_MARGIN: 0.0015, // зазор Y для отрыва
+  SIM_DETACH_VY_THRESHOLD: -0.01, // порог vy для отрыва
+  SIM_THETA_CLAMP: 0.7, // ограничение наклона шипов
+  SIM_THETA_DAMP: 0.95, // демпфирование наклона шипов
+  SIM_NODE_V_CLAMP: 6, // предел скорости узлов
+  SIM_UY_MAX: 0.0015, // верхний предел вертикального смещения
+  SIM_POST_DUR: 0.06, // длительность пост-полета, с
+  SIM_SPIN_AIR_DAMP: 0.06, // затухание spin в полете
+  SIM_ENERGY_EPS: 1e-12, // epsilon для энергии
+  SIM_SLIP_TIME_EPS: 1e-9, // epsilon для деления по времени
+  M_TO_MM: 1000, // перевод м -> мм
+  S_TO_MS: 1000, // перевод секунд -> миллисекунды
+  PERCENT: 100, // перевод в проценты
+
+  // Surface model
+  SURF_DEPTH: 0.012, // глубина для массы узла, м
+  SURF_MASS_MIN: 1e-6, // минимальная масса узла, кг
+  SURF_WEIGHT_EPS: 1e-9, // epsilon для весов
+  SURF_FRICTION_MS_MIN: 0.05, // минимум mu_s
+  SURF_FRICTION_MS_MAX: 1.5, // максимум mu_s
+  SURF_FRICTION_MK_MIN: 0.03, // минимум mu_k
+  SURF_FRICTION_MK_MAX: 1.2, // максимум mu_k
+  SURF_KSUM_EPS: 1e-12, // epsilon для сумм жесткости
+  SURF_KC_BALL_SCALE: 0.07, // вклад жесткости мяча
+  SURF_KC_EN_SCALE: 0.006, // вклад жесткости поверхности
+  SURF_KC_SCALE: 0.85, // общий масштаб kc
+  SURF_CC_BALL_SCALE: 0.9, // вклад демпфирования мяча
+  SURF_CC_TOP_EXP: 0.8, // экспонента для веса cn
+  SURF_CC_TOP_WEIGHT: 0.1, // вклад верхнего cn
+  SURF_KS_MIN: 600, // минимум ks
+  SURF_KS_EN_SCALE: 0.006, // вклад kt в ks
+  SURF_KS_TOP_WEIGHT: 0.03, // вклад верхнего kt в ks
+  SURF_KBY_MIN: 400, // минимум kby
+  SURF_KBY_EN_SCALE: 0.02, // вклад kn в kby
+  SURF_CBY_TOP_WEIGHT: 0.25, // вклад cn в cby
+  SURF_KLY_MIN: 220, // минимум kly
+  SURF_KLY_TOP_EXP: 1.2, // экспонента для веса kn
+  SURF_KLY_TOP_SCALE: 0.009, // масштаб для kly
+  SURF_CLY_TOP_SCALE: 0.18, // масштаб для cly
+  SURF_KBX_MIN: 320, // минимум kbx
+  SURF_KBX_EN_SCALE: 0.022, // вклад kt в kbx
+  SURF_CBX_TOP_EXP: 0.9, // экспонента для веса ct
+  SURF_CBX_TOP_SCALE: 0.28, // масштаб для cbx
+  SURF_KLX_MIN: 180, // минимум klx
+  SURF_KLX_TOP_EXP: 1.1, // экспонента для веса kt
+  SURF_KLX_TOP_SCALE: 0.007, // масштаб для klx
+  SURF_CLX_TOP_SCALE: 0.2, // масштаб для clx
+  SURF_HP_DEFAULT_PK: 200, // дефолтная жесткость шипов
+  SURF_PK_MIN: 8, // минимум pk
+  SURF_PK_SCALE: 0.18, // масштаб pk
+  SURF_PC_BASE: 2, // базовый коэффициент pc
+  SURF_PC_SCALE: 0.014, // масштаб pc
+  SURF_PG_SCALE: 0.00016, // масштаб pg
+  SURF_FNC_MIN: 8, // минимум fn cap
+  SURF_FNC_G_MULT: 60, // множитель g для fn cap
+  SURF_GD: 0.9976, // глобальный коэффициент демпфирования
+  SURF_LAYER_PH_DEFAULT: 1, // дефолтная высота шипов, мм
+  SURF_PIMPL_DENS_MIN: 4, // минимум плотности шипов
+  SURF_PIMPL_DENS_DEFAULT: 8, // дефолтная плотность шипов
+  SURF_WEIGHT_MS_EXP: 0.9, // экспонента для ms
+  SURF_WEIGHT_MK_EXP: 0.9, // экспонента для mk
+  SURF_WEIGHT_CN_EXP: 0.8, // экспонента для cn
+  SURF_WEIGHT_KT_EXP: 1.0, // экспонента для kt
+  SURF_WEIGHT_CN2_EXP: 1.0, // экспонента для cn в cby
+  SURF_WEIGHT_KN_EXP: 1.2, // экспонента для kn
+  SURF_WEIGHT_CT_EXP: 0.9, // экспонента для ct
+  SURF_WEIGHT_KT2_EXP: 1.1, // экспонента для kt (второй набор)
+  SURF_DENOM_MIN: 1, // минимум для делителей
+  DENOM_MIN: 1, // универсальный минимум для делителей
+  SIGN_FALLBACK: 1, // fallback для Math.sign
+  SURF_LAYER_MM_TO_M: 0.001, // перевод мм -> м для слоев
+  DENS_DEFAULT: 900, // плотность по умолчанию, кг/м3
+
+  // Structural forces
+  STRUCT_EDGE_K_FACTOR: 22, // усиление жесткости на краях
+  STRUCT_EDGE_C_FACTOR: 6, // усиление демпфирования на краях
+  STRUCT_EDGE_GUARD: 2, // крайние узлы спереди
+  STRUCT_EDGE_GUARD_BACK: 3, // крайние узлы сзади
+
+  // Rendering
+  RENDER_SCALE_BASE: 3900, // базовый масштаб
+  RENDER_BOTTOM_MARGIN: 18, // нижний отступ от края canvas
+  RENDER_MIN_SURFACE_Y: 140, // минимальная позиция поверхности по Y
+  BG_GRID_START: 30, // старт сетки по Y
+  BG_GRID_STEP: 36, // шаг сетки по Y
+  LAYER_ALPHA: 0.92, // прозрачность слоев
+  LAYER_FONT_SIZE: 11, // размер шрифта слоев
+  LAYER_LINE_WIDTH: 1.5, // толщина линии слоев
+  LAYER_LABEL_X_OFFSET: 4, // смещение подписи X
+  LAYER_LABEL_Y_OFFSET: -2, // смещение подписи Y
+  LAYER_LABEL_X_OFFSET_M: 0.001, // смещение подписи слоя в метрах
+  PIMPL_MIN_COUNT: 8, // минимум количества шипов
+  PIMPL_COUNT_SCALE: 2, // масштаб плотности шипов
+  PIMPL_INNER_HEIGHT_SCALE: 0.8, // масштаб высоты для шипов внутрь
+  PIMPL_LINE_WIDTH: 1.7, // толщина линии шипов
+  PRESSURE_R_MIN: 4, // минимум радиуса пятна
+  PRESSURE_PMAX_SCALE: 5e5, // масштаб давления
+  PRESSURE_ALPHA_MIN: 0.06, // минимум альфы давления
+  PRESSURE_ALPHA_MAX: 0.45, // максимум альфы давления
+  PRESSURE_GRAD_INNER_R: 2, // внутренний радиус градиента
+  PRESSURE_ALPHA_OUT: 0.02, // альфа края давления
+  PRESSURE_ELLIPSE_Y_SCALE: 0.35, // сплющивание эллипса
+  PATCH_LINE_WIDTH: 3, // толщина линии пятна контакта
+  BALL_LINE_WIDTH: 2, // толщина контура мяча
+  BALL_MARK_LINE_WIDTH: 2.2, // толщина метки
+  BALL_MARK_LEN: 0.82, // длина метки (доля радиуса)
+  BALL_MARK_DOT_POS: 0.64, // позиция основной точки
+  BALL_MARK_DOT_R: 0.1, // радиус основной точки
+  BALL_MARK_DOT2_X: -0.32, // X второй точки
+  BALL_MARK_DOT2_Y: 0.24, // Y второй точки
+  BALL_MARK_DOT2_R: 0.06, // радиус второй точки
+  BALL_GRAD_X: -0.25, // X градиента мяча
+  BALL_GRAD_Y: -0.2, // Y градиента мяча
+  BALL_GRAD_R: 0.2, // радиус градиента мяча
+  SPIN_ARROW_R_PAD: 14, // отступ стрелки спина от мяча
+  SPIN_ARROW_A0_POS: 0.3, // начало дуги (CCW)
+  SPIN_ARROW_A0_NEG: 2.84, // начало дуги (CW)
+  SPIN_ARROW_A1_POS: 2.7, // конец дуги (CCW)
+  SPIN_ARROW_A1_NEG: 5.98, // конец дуги (CW)
+  SPIN_ARROW_LINE_WIDTH: 1.6, // толщина дуги спина
+  SPIN_ARROW_HEAD: 7, // размер головки стрелки
+  SPIN_ARROW_HEAD_ANGLE: 0.35, // угол головки стрелки
+  VEC_FN_SCALE: 0.0022, // масштаб Fn
+  VEC_FT_SCALE: 0.0028, // масштаб Ft
+  VEC_V_SCALE: 18, // масштаб скорости v
+  VEC_VREL_SCALE: 28, // масштаб относительной скорости
+  VEC_LINE_WIDTH: 2, // толщина векторов
+  VEC_ARROW_HEAD: 7, // размер стрелки вектора
+  VEC_ARROW_ANGLE: 0.42, // угол стрелки вектора
+  VEC_LAB
