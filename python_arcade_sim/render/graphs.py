@@ -66,9 +66,9 @@ class GraphPanel:
     def draw_frame(self) -> None:
         """Нарисовать рамку и заголовок."""
         # Рамка
-        arcade.draw_rectangle_outline(
-            self.x + self.width / 2,
-            self.y + self.height / 2,
+        arcade.draw_lbwh_rectangle_outline(
+            self.x,
+            self.y,
             self.width,
             self.height,
             COLOR_GRID,
