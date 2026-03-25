@@ -21,6 +21,14 @@ from ui.panels import (
     draw_surface_panel,
 )
 
+# Глобальные переменные для отладки (устанавливаются из main.py)
+DEBUG_MODE = False
+NO_SLOWDOWN = False
+INITIAL_SPEED = 10.0
+INITIAL_ANGLE = -30.0
+INITIAL_SPIN = 0.0
+INITIAL_SPIN_DIR = "cw"
+
 
 class SimulationWindow(arcade.Window):
     """
@@ -95,6 +103,13 @@ class SimulationWindow(arcade.Window):
 
     def reset_simulation(self) -> None:
         """Сбросить и инициализировать симуляцию."""
+        # Применяем параметры из командной строки (если заданы)
+        if INITIAL_SPEED != 10.0 or INITIAL_ANGLE != -30.0:
+            self.ui_state.speed = INITIAL_SPEED
+            self.ui_state.angle = INITIAL_ANGLE
+            self.ui_state.spin = INITIAL_SPIN
+            self.ui_state.spin_dir = INITIAL_SPIN_DIR
+
         params = self.ui_state.to_simulation_params()
         self.model.reset(params)
         self.ui_state.ui_mode = UIMode.RUNNING
@@ -196,13 +211,13 @@ class SimulationWindow(arcade.Window):
         """Обновление физики."""
         if self.ui_state.ui_mode == UIMode.RUNNING and not self.model.is_finished():
             # Замедление в 20 раз во время контакта (для отладки физики)
-            snapshot = self.model.get_render_snapshot()
-            if snapshot.contact.is_active:
-                # Контакт активен - замедляем в 20 раз
-                self.model.step(delta_time / 20)
-            else:
-                # Обычная скорость
-                self.model.step(delta_time)
+            if not NO_SLOWDOWN:
+                snapshot = self.model.get_render_snapshot()
+                if snapshot.contact.is_active:
+                    # Контакт активен - замедляем в 20 раз
+                    delta_time = delta_time / 20
+
+            self.model.step(delta_time)
 
     def on_mouse_press(
         self,

@@ -43,6 +43,12 @@ if __name__ == "__main__":
 
 # =============================================================================
 
+# Для отладки (импортируется из app.window)
+try:
+    from app.window import DEBUG_MODE
+except ImportError:
+    DEBUG_MODE = False
+
 from typing import Final
 
 from config.constants import (
@@ -469,10 +475,13 @@ class PhysicsModel:
         accelerations = compute_ball_accelerations(self._ball, ball_params, ball_forces)
 
         # Отладка: вывод сил при контакте
-        if self._contact.is_active and self._time < 0.2:
+        if DEBUG_MODE and self._contact.is_active and self._time < 0.3:
+            omega_dir = "CW (по часовой)" if self._ball.omega < 0 else "CCW (против)"
             print(
                 f"t={self._time:.4f}: Fn={self._contact.fn_total:.1f}N, Ft={self._contact.ft_total:.1f}N, "
-                f"ax={accelerations[0]:.0f}, ay={accelerations[1]:.0f}, v_x={self._ball.v_x:.2f}, v_y={self._ball.v_y:.2f}"
+                f"ax={accelerations[0]:.0f}, ay={accelerations[1]:.0f}, "
+                f"v_x={self._ball.v_x:.2f}, v_y={self._ball.v_y:.2f}, "
+                f"omega={self._ball.omega:.1f} ({omega_dir})"
             )
 
         integrate_ball(self._ball, ball_params, accelerations, dt)
