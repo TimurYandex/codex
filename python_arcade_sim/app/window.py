@@ -7,7 +7,7 @@
 import arcade
 from arcade import Text
 
-from physics.model import PhysicsModel
+from physics.model_lumped import PhysicsModelLumped as PhysicsModel
 from physics.sim_types import SimulationMetrics
 from render.renderer import Renderer
 from render.graphs import draw_graphs

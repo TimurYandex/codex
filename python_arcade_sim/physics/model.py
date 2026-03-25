@@ -873,8 +873,10 @@ class PhysicsModel:
             accelerations: (a_x, a_y, omega_dot) — текущие ускорения.
         """
         a_x, a_y, _ = accelerations
+        is_active = "A" if self._contact.is_active else "_"
+        n_active = len(self._contact.active_nodes)
         print(
-            f"t={self._time:.5f} mode={self._mode.value:10s} "
+            f"t={self._time:.5f} mode={self._mode.value:10s} [{is_active},{n_active:2d}] "
             f"pos=({self._ball.x:7.4f}, {self._ball.y:7.4f}) "
             f"v=({self._ball.v_x:7.2f}, {self._ball.v_y:7.2f}) "
             f"ω={self._ball.omega:7.1f} "

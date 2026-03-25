@@ -16,9 +16,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Включаем debug-режим ДО импорта модели
 import app.window as window_module
 
-window_module.DEBUG_MODE = True
+window_module.DEBUG_MODE = False  # Отключить лог по умолчанию
 
-from physics.model import PhysicsModel
+from physics.model_lumped import PhysicsModelLumped as PhysicsModel
 from physics.sim_types import (
     BallParams,
     CollisionParams,
@@ -47,7 +47,7 @@ def run_simulation(
     model = PhysicsModel()
 
     params = SimulationParams(
-        ball=BallParams(radius=0.02, mass=0.0027, ifactor=0.4),
+        ball=BallParams(radius=0.02, mass=0.0027, ifactor=0.4, k=62000, c=10.5),
         surface=SurfaceParams(half_width=0.15, n_nodes=50),
         collision=CollisionParams(
             speed=speed, angle=angle, spin=spin, spin_dir=spin_dir

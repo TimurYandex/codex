@@ -336,13 +336,18 @@ def compute_contact(
     # Если нет контакта — сбрасываем stick-смещение
     if len(active_nodes) == 0:
         stick_s = 0.0
+    else:
+        # Релаксация stick-смещения (как в JS реализации)
+        # Это позволяет модели "забывать" старое трение
+        stick_s *= 0.985
 
     # Средняя скорость проскальзывания
     if slip_count > 0:
         avg_slip_velocity /= slip_count
 
     # Ограничение stick-смещения (защита от накопления)
-    stick_s = clamp(stick_s, -0.01, 0.01)
+    # Увеличил лимит с 0.01 до 0.1 для больших скоростей
+    stick_s = clamp(stick_s, -0.1, 0.1)
 
     # Кап суммарных сил
     ft_max = K_FORCE_CAP * len(active_nodes) if active_nodes else K_FORCE_CAP
