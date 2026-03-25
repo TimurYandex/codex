@@ -399,6 +399,8 @@ class PhysicsModel:
         self._contact.slip_velocity = contact_result.slip_velocity
         self._contact.stick_displacement = contact_result.stick_displacement
         self._contact.is_slipping = contact_result.is_slipping
+        self._contact.active_nodes = contact_result.active_nodes
+        self._contact.pressure = contact_result.pressure
 
         # ====================================================================
         # 2. Динамика шипов

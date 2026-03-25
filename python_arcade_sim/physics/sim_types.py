@@ -206,6 +206,10 @@ class ContactState:
     """Накопленное stick-смещение, м."""
     is_slipping: bool = False
     """Проскальзывание активно."""
+    active_nodes: list[int] = field(default_factory=list)
+    """Индексы активных узлов (в контакте)."""
+    pressure: list[float] = field(default_factory=list)
+    """Давление в активных узлах, Па."""
 
 
 # =============================================================================
