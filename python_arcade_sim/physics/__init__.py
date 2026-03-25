@@ -5,6 +5,13 @@
 """
 
 from .model import PhysicsModel
+from .spikes import (
+    SpikesInput,
+    SpikesOutput,
+    apply_spikes_to_friction,
+    compute_spikes_dynamics,
+    init_spikes_state,
+)
 from .surface import (
     EquivalentSurfaceParams,
     SpikeEquivalentParams,
@@ -15,7 +22,7 @@ from .surface import (
     init_surface_state,
     integrate_surface,
 )
-from .types import (
+from .sim_types import (
     BallParams,
     BallState,
     CollisionParams,
@@ -37,6 +44,12 @@ from .types import (
 __all__ = [
     # Model
     "PhysicsModel",
+    # Spikes
+    "SpikesInput",
+    "SpikesOutput",
+    "compute_spikes_dynamics",
+    "init_spikes_state",
+    "apply_spikes_to_friction",
     # Surface
     "EquivalentSurfaceParams",
     "SpikeEquivalentParams",

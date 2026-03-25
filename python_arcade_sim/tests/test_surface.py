@@ -21,7 +21,7 @@ from physics.surface import (
     init_surface_state,
     integrate_surface,
 )
-from physics.types import LayerParams, SpikeMode, SurfaceParams
+from physics.sim_types import LayerParams, SpikeMode, SurfaceParams
 
 
 def create_test_surface_params() -> SurfaceParams:
@@ -64,22 +64,22 @@ def test_init_surface_state() -> None:
     """После инициализации массивы имеют корректные размеры."""
     params = create_test_surface_params()
     state = init_surface_state(params)
-    
+
     # Проверка размеров
     assert len(state.x_nodes) == 100
     assert len(state.u_y) == 100
     assert len(state.u_x) == 100
     assert len(state.v_y) == 100
     assert len(state.v_x) == 100
-    
+
     # Проверка диапазона X
     assert state.x_nodes[0] == -0.15
     assert state.x_nodes[-1] == 0.15
-    
+
     # Проверка нулевых смещений
     assert all(u == 0.0 for u in state.u_y)
     assert all(u == 0.0 for u in state.u_x)
-    
+
     print("✓ test_init_surface_state passed")
 
 
@@ -87,7 +87,7 @@ def test_compute_equivalent_params() -> None:
     """Эквивалентные параметры вычисляются корректно."""
     params = create_test_surface_params()
     eq = compute_equivalent_params(params)
-    
+
     # Проверка, что параметры не нулевые
     assert eq.k_n_eq > 0
     assert eq.k_t_eq > 0
@@ -95,16 +95,16 @@ def test_compute_equivalent_params() -> None:
     assert eq.c_t_eq > 0
     assert eq.mu_s_eq > 0
     assert eq.mu_k_eq > 0
-    
+
     # Проверка mu_k <= mu_s
     assert eq.mu_k_eq <= eq.mu_s_eq
-    
+
     # Проверка массы
     assert eq.mass_per_meter > 0
-    
+
     # Шипы не активны
     assert eq.spike_params is None
-    
+
     print("✓ test_compute_equivalent_params passed")
 
 
@@ -113,22 +113,22 @@ def test_compute_internal_forces_no_nan() -> None:
     params = create_test_surface_params()
     state = init_surface_state(params)
     eq = compute_equivalent_params(params)
-    
+
     forces = compute_internal_forces(state, params, eq)
-    
+
     # Проверка размеров
     assert len(forces.f_y) == 100
     assert len(forces.f_x) == 100
-    
+
     # Проверка отсутствия NaN
     assert all(not (f != f) for f in forces.f_y)  # NaN check
     assert all(not (f != f) for f in forces.f_x)
-    
+
     # При нулевых смещениях силы должны быть нулевыми (или близкими)
     # (в данном случае они будут нулевыми, т.к. u=v=0)
     assert all(f == 0.0 for f in forces.f_y)
     assert all(f == 0.0 for f in forces.f_x)
-    
+
     print("✓ test_compute_internal_forces_no_nan passed")
 
 
@@ -136,24 +136,24 @@ def test_compute_internal_forces_with_displacement() -> None:
     """При смещениях возникают возвращающие силы."""
     params = create_test_surface_params()
     state = init_surface_state(params)
-    
+
     # Зададим смещения
     for i in range(len(state.u_y)):
         state.u_y[i] = 0.001  # 1 мм вверх
         state.u_x[i] = 0.0005  # 0.5 мм вправо
-    
+
     eq = compute_equivalent_params(params)
     forces = compute_internal_forces(state, params, eq)
-    
+
     # Проверка отсутствия NaN
     assert all(not (f != f) for f in forces.f_y)
     assert all(not (f != f) for f in forces.f_x)
-    
+
     # Силы должны быть ненулевыми (возвращающая сила)
     # (проверяем хотя бы некоторые узлы в центре)
     center = len(forces.f_y) // 2
     assert forces.f_y[center] != 0.0 or forces.f_x[center] != 0.0
-    
+
     print("✓ test_compute_internal_forces_with_displacement passed")
 
 
@@ -162,26 +162,26 @@ def test_integrate_surface() -> None:
     params = create_test_surface_params()
     state = init_surface_state(params)
     eq = compute_equivalent_params(params)
-    
+
     # Зададим начальные смещения
     for i in range(len(state.u_y)):
         state.u_y[i] = 0.001
-    
+
     forces = compute_internal_forces(state, params, eq)
-    
+
     # Интегрирование
     dt = 1e-5
     integrate_surface(state, forces, eq, params, dt)
-    
+
     # Проверка, что скорости изменились (стали ненулевыми)
     # (не все, но хотя бы некоторые)
     non_zero_vy = sum(1 for v in state.v_y if v != 0.0)
     assert non_zero_vy > 0
-    
+
     # Проверка отсутствия NaN
     assert all(not (v != v) for v in state.v_y)
     assert all(not (v != v) for v in state.v_x)
-    
+
     print("✓ test_integrate_surface passed")
 
 
@@ -190,24 +190,24 @@ def test_compute_ball_surface_y() -> None:
     ball_x = 0.0
     ball_y = 0.02  # Центр мяча на высоте радиуса
     radius = 0.02
-    
+
     # В центре (dd = 0): y = ball_y - r = 0
     y_center = compute_ball_surface_y(ball_x, ball_y, radius, 0.0)
     assert abs(y_center - 0.0) < 1e-9
-    
+
     # На краю (dd = r): y = ball_y - 0 = ball_y
     y_edge = compute_ball_surface_y(ball_x, ball_y, radius, radius)
     assert abs(y_edge - ball_y) < 1e-9
-    
+
     # За пределами радиуса (защита от отрицательного подкорня)
     y_outside = compute_ball_surface_y(ball_x, ball_y, radius, radius * 1.1)
     assert y_outside == ball_y  # Возвращается ball_y при защите
-    
+
     # Проверка отсутствия NaN
     assert not (y_center != y_center)
     assert not (y_edge != y_edge)
     assert not (y_outside != y_outside)
-    
+
     print("✓ test_compute_ball_surface_y passed")
 
 
@@ -235,21 +235,21 @@ def test_equivalent_params_with_spikes() -> None:
         n_nodes=100,
         fr_mul=1.0,
     )
-    
+
     eq = compute_equivalent_params(params)
-    
+
     # Шипы должны быть активны
     assert eq.spike_params is not None
     assert eq.spike_params.k_sh == 1000.0
     assert eq.spike_params.h == 0.001
-    
+
     print("✓ test_equivalent_params_with_spikes passed")
 
 
 def run_all_tests() -> None:
     """Запустить все тесты."""
     print("Running Surface tests...\n")
-    
+
     test_init_surface_state()
     test_compute_equivalent_params()
     test_compute_internal_forces_no_nan()
@@ -257,7 +257,7 @@ def run_all_tests() -> None:
     test_integrate_surface()
     test_compute_ball_surface_y()
     test_equivalent_params_with_spikes()
-    
+
     print("\n✅ All Surface tests passed!")
 
 
