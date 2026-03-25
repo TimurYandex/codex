@@ -12,6 +12,7 @@ from typing import Literal
 
 class SpikeMode(Enum):
     """Режим шипов верхнего слоя."""
+
     NONE = "none"
     OUT = "out"
     IN = "in"
@@ -19,12 +20,14 @@ class SpikeMode(Enum):
 
 class QualityLevel(Enum):
     """Уровень качества симуляции."""
+
     NORMAL = "normal"
     HIGH = "high"
 
 
 class SimulationMode(Enum):
     """Режим симуляции."""
+
     IDLE = "idle"
     PREFLIGHT = "preflight"
     CONTACT = "contact"
@@ -36,9 +39,11 @@ class SimulationMode(Enum):
 # Входные параметры симуляции
 # =============================================================================
 
+
 @dataclass
 class BallParams:
     """Параметры мяча."""
+
     radius: float = 0.02
     """Радиус мяча, м."""
     mass: float = 0.0027
@@ -56,6 +61,7 @@ class BallParams:
 @dataclass
 class LayerParams:
     """Параметры одного слоя поверхности."""
+
     title: str = "Layer"
     """Название слоя (для UI)."""
     thickness: float = 0.001
@@ -87,6 +93,7 @@ class LayerParams:
 @dataclass
 class SurfaceParams:
     """Параметры поверхности."""
+
     layers: list[LayerParams] = field(default_factory=list)
     """Список слоёв (верхний первый)."""
     half_width: float = 0.15
@@ -102,6 +109,7 @@ class SurfaceParams:
 @dataclass
 class CollisionParams:
     """Параметры столкновения."""
+
     speed: float = 10.0
     """Скорость налета, м/с."""
     angle: float = -30.0
@@ -115,6 +123,7 @@ class CollisionParams:
 @dataclass
 class SimulationParams:
     """Все входные параметры симуляции."""
+
     ball: BallParams = field(default_factory=BallParams)
     surface: SurfaceParams = field(default_factory=SurfaceParams)
     collision: CollisionParams = field(default_factory=CollisionParams)
@@ -128,9 +137,11 @@ class SimulationParams:
 # Состояние симуляции
 # =============================================================================
 
+
 @dataclass
 class BallState:
     """Состояние мяча."""
+
     x: float = 0.0
     y: float = 0.0
     v_x: float = 0.0
@@ -144,6 +155,7 @@ class BallState:
 @dataclass
 class SurfaceState:
     """Состояние поверхности (узлы)."""
+
     x_nodes: list[float] = field(default_factory=list)
     """Позиции узлов по X, м."""
     u_y: list[float] = field(default_factory=list)
@@ -154,7 +166,7 @@ class SurfaceState:
     """Вертикальные скорости узлов, м/с."""
     v_x: list[float] = field(default_factory=list)
     """Горизонтальные скорости узлов, м/с."""
-    
+
     # Агрегаты для визуализации/метрик
     active_nodes: list[int] = field(default_factory=list)
     """Индексы активных узлов (в контакте)."""
@@ -165,6 +177,7 @@ class SurfaceState:
 @dataclass
 class SpikesState:
     """Состояние шипов."""
+
     theta: float = 0.0
     """Наклон шипов, рад."""
     theta_dot: float = 0.0
@@ -174,12 +187,17 @@ class SpikesState:
 @dataclass
 class ContactState:
     """Состояние контакта."""
+
     is_active: bool = False
     """Контакт активен в текущий момент."""
     fn: float = 0.0
     """Нормальная сила, Н."""
     ft: float = 0.0
     """Касательная сила, Н."""
+    fn_total: float = 0.0
+    """Суммарная нормальная сила, Н."""
+    ft_total: float = 0.0
+    """Суммарная касательная сила, Н."""
     penetration: float = 0.0
     """Глубина проникновения, м."""
     slip_velocity: float = 0.0
@@ -194,9 +212,11 @@ class ContactState:
 # Метрики и результаты
 # =============================================================================
 
+
 @dataclass
 class SimulationMetrics:
     """Итоговые метрики симуляции."""
+
     v_out: float = 0.0
     """Итоговая скорость, м/с."""
     omega_out: float = 0.0
@@ -222,6 +242,7 @@ class SimulationMetrics:
 @dataclass
 class HistoryPoint:
     """Точка истории для графиков."""
+
     time: float = 0.0
     fn: float = 0.0
     ft: float = 0.0
@@ -235,8 +256,9 @@ class HistoryPoint:
 @dataclass
 class SimulationHistory:
     """История симуляции для графиков."""
+
     points: list[HistoryPoint] = field(default_factory=list)
-    
+
     def append(self, point: HistoryPoint) -> None:
         self.points.append(point)
 
@@ -245,9 +267,11 @@ class SimulationHistory:
 # Снимок состояния для рендера
 # =============================================================================
 
+
 @dataclass
 class RenderSnapshot:
     """Снимок состояния для отрисовки."""
+
     ball: BallState = field(default_factory=BallState)
     surface: SurfaceState = field(default_factory=SurfaceState)
     spikes: SpikesState = field(default_factory=SpikesState)
