@@ -1,4 +1,5 @@
 import arcade
+from arcade import Text
 
 
 class SimulationWindow(arcade.Window):
@@ -6,19 +7,19 @@ class SimulationWindow(arcade.Window):
         super().__init__(width=width, height=height, title=title)
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
         self._frame_count = 0
+        self._status_text = Text(
+            "Baseline window: arcade runs correctly.",
+            x=20,
+            y=height - 40,
+            font_size=14,
+            color=arcade.color.WHITE,
+        )
 
     def on_draw(self) -> None:
-        arcade.start_render()
+        self.clear()
         self._frame_count += 1
-        arcade.draw_text(
-            "Baseline window: arcade runs correctly.",
-            20,
-            self.height - 40,
-            arcade.color.WHITE,
-            font_size=14,
-        )
+        self._status_text.draw()
 
     def on_update(self, delta_time: float) -> None:
         # Пока логика сведена к минимуму; на следующих шагах подключим симуляцию.
         _ = delta_time
-
