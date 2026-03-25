@@ -310,6 +310,7 @@ class Renderer:
         snapshot: RenderSnapshot,
         surface_params: SurfaceParams,
         metrics: "SimulationMetrics | None" = None,
+        show_overlays: bool = True,
     ) -> None:
         """
         Выполнить полную отрисовку кадра.
@@ -318,9 +319,16 @@ class Renderer:
             snapshot: Снимок состояния.
             surface_params: Параметры поверхности.
             metrics: Метрики симуляции (опционально).
+            show_overlays: Показать оверлеи (векторы, контактное пятно).
         """
         self.draw_background()
         self.draw_grid()
         self.draw_surface(surface_params, snapshot)
         self.draw_ball(snapshot)
+
+        if show_overlays:
+            from render.overlays import draw_overlays
+
+            draw_overlays(snapshot, self)
+
         self.draw_status_text(snapshot, metrics)
