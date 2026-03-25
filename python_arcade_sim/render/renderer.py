@@ -161,18 +161,13 @@ class Renderer:
             height = (y_top - y_bottom) * self.pixels_per_meter
 
             if height > 0:
-                arcade.draw_rectangle_filled(
-                    (left_x + right_x) / 2, bottom_y + height / 2, width, height, color
+                arcade.draw_lbwh_rectangle_filled(
+                    left_x, bottom_y, width, height, color
                 )
 
                 # Контур слоя
-                arcade.draw_rectangle_outline(
-                    (left_x + right_x) / 2,
-                    bottom_y + height / 2,
-                    width,
-                    height,
-                    COLOR_LAYER_OUTLINE,
-                    1,
+                arcade.draw_lbwh_rectangle_outline(
+                    left_x, bottom_y, width, height, COLOR_LAYER_OUTLINE, 1
                 )
 
             y_offset = y_bottom
@@ -211,12 +206,17 @@ class Renderer:
                     3,
                 )
 
-    def draw_ball(self, snapshot: RenderSnapshot) -> None:
+    def draw_ball(
+        self,
+        snapshot: RenderSnapshot,
+        ball_radius: float = 0.02,
+    ) -> None:
         """
         Нарисовать мяч.
 
         Args:
             snapshot: Снимок состояния с позицией мяча.
+            ball_radius: Радиус мяча, м.
         """
         ball = snapshot.ball
 
@@ -224,7 +224,7 @@ class Renderer:
         sx, sy = self.world_to_screen(ball.x, ball.y)
 
         # Радиус в пикселях
-        radius_px = ball.radius * self.pixels_per_meter
+        radius_px = ball_radius * self.pixels_per_meter
 
         # Основной круг
         arcade.draw_circle_filled(sx, sy, radius_px, COLOR_BALL)
@@ -324,7 +324,7 @@ class Renderer:
         self.draw_background()
         self.draw_grid()
         self.draw_surface(surface_params, snapshot)
-        self.draw_ball(snapshot)
+        self.draw_ball(snapshot, 0.02)  # Радиус по умолчанию
 
         if show_overlays:
             from render.overlays import draw_overlays

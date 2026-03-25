@@ -28,40 +28,22 @@ def draw_panel_background(
 ) -> None:
     """
     Нарисовать фон панели.
-    
+
     Args:
         x, y: Позиция левого нижнего угла.
         width, height: Размеры панели.
         title: Заголовок панели.
     """
     # Фон
-    arcade.draw_rectangle_filled(
-        x + width / 2,
-        y + height / 2,
-        width,
-        height,
-        COLOR_PANEL_BG
-    )
-    
+    arcade.draw_lbwh_rectangle_filled(x, y, width, height, COLOR_PANEL_BG)
+
     # Граница
-    arcade.draw_rectangle_outline(
-        x + width / 2,
-        y + height / 2,
-        width,
-        height,
-        COLOR_PANEL_BORDER,
-        1
-    )
-    
+    arcade.draw_lbwh_rectangle_outline(x, y, width, height, COLOR_PANEL_BORDER, 1)
+
     # Заголовок
     if title:
         arcade.draw_text(
-            title,
-            x + 10,
-            y + height - 20,
-            COLOR_TEXT,
-            12,
-            anchor_x="left"
+            title, x + 10, y + height - 20, COLOR_TEXT, 12, anchor_x="left"
         )
 
 
@@ -76,7 +58,7 @@ def draw_button(
 ) -> None:
     """
     Нарисовать кнопку.
-    
+
     Args:
         x, y: Позиция левого нижнего угла.
         width, height: Размеры кнопки.
@@ -90,24 +72,11 @@ def draw_button(
         color = COLOR_BUTTON_HOVER
     else:
         color = COLOR_BUTTON
-    
-    arcade.draw_rectangle_filled(
-        x + width / 2,
-        y + height / 2,
-        width,
-        height,
-        color
-    )
-    
-    arcade.draw_rectangle_outline(
-        x + width / 2,
-        y + height / 2,
-        width,
-        height,
-        COLOR_PANEL_BORDER,
-        1
-    )
-    
+
+    arcade.draw_lbwh_rectangle_filled(x, y, width, height, color)
+
+    arcade.draw_lbwh_rectangle_outline(x, y, width, height, COLOR_PANEL_BORDER, 1)
+
     arcade.draw_text(
         label,
         x + width / 2,
@@ -115,7 +84,7 @@ def draw_button(
         COLOR_TEXT,
         11,
         anchor_x="center",
-        anchor_y="center"
+        anchor_y="center",
     )
 
 
@@ -131,7 +100,7 @@ def draw_slider(
 ) -> None:
     """
     Нарисовать слайдер.
-    
+
     Args:
         x, y: Позиция левого нижнего угла.
         width, height: Размеры слайдера.
@@ -142,43 +111,21 @@ def draw_slider(
     # Подпись
     if label:
         arcade.draw_text(
-            f"{label}: {value:.3f}",
-            x,
-            y + height + 5,
-            COLOR_LABEL,
-            10,
-            anchor_x="left"
+            f"{label}: {value:.3f}", x, y + height + 5, COLOR_LABEL, 10, anchor_x="left"
         )
-    
+
     # Фон слайдера
-    arcade.draw_rectangle_filled(
-        x + width / 2,
-        y + height / 2,
-        width,
-        height,
-        COLOR_PANEL_BG
-    )
-    
-    arcade.draw_rectangle_outline(
-        x + width / 2,
-        y + height / 2,
-        width,
-        height,
-        COLOR_PANEL_BORDER,
-        1
-    )
-    
+    arcade.draw_lbwh_rectangle_filled(x, y, width, height, COLOR_PANEL_BG)
+
+    arcade.draw_lbwh_rectangle_outline(x, y, width, height, COLOR_PANEL_BORDER, 1)
+
     # Ползунок
     ratio = (value - min_val) / max(max_val - min_val, 1e-9)
     handle_x = x + ratio * width
     handle_size = height + 4
-    
+
     arcade.draw_rectangle_filled(
-        handle_x,
-        y + height / 2,
-        handle_size,
-        handle_size,
-        COLOR_BUTTON
+        handle_x, y + height / 2, handle_size, handle_size, COLOR_BUTTON
     )
 
 
@@ -190,29 +137,15 @@ def draw_label_value(
 ) -> None:
     """
     Нарисовать пару label-value.
-    
+
     Args:
         x, y: Позиция.
         label: Текст метки.
         value: Текст значения.
     """
-    arcade.draw_text(
-        label,
-        x,
-        y,
-        COLOR_LABEL,
-        10,
-        anchor_x="left"
-    )
-    
-    arcade.draw_text(
-        value,
-        x + 120,
-        y,
-        COLOR_TEXT,
-        10,
-        anchor_x="left"
-    )
+    arcade.draw_text(label, x, y, COLOR_LABEL, 10, anchor_x="left")
+
+    arcade.draw_text(value, x + 120, y, COLOR_TEXT, 10, anchor_x="left")
 
 
 def draw_collision_panel(
@@ -224,16 +157,16 @@ def draw_collision_panel(
 ) -> None:
     """
     Нарисовать панель параметров столкновения.
-    
+
     Args:
         ui_state: Состояние UI.
         x, y: Позиция.
         width, height: Размеры.
     """
     draw_panel_background(x, y, width, height, "Collision")
-    
+
     py = y + height - 45
-    
+
     draw_label_value(x + 10, py, "Speed:", f"{ui_state.speed:.1f} m/s")
     draw_label_value(x + 10, py - 20, "Angle:", f"{ui_state.angle:.1f} deg")
     draw_label_value(x + 10, py - 40, "Spin:", f"{ui_state.spin:.1f} rad/s")
@@ -249,19 +182,21 @@ def draw_ball_panel(
 ) -> None:
     """
     Нарисовать панель параметров мяча.
-    
+
     Args:
         ui_state: Состояние UI.
         x, y: Позиция.
         width, height: Размеры.
     """
     draw_panel_background(x, y, width, height, "Ball")
-    
+
     py = y + height - 45
-    
+
     ball_type = "Hollow" if ui_state.ball_is_hollow else "Solid"
     draw_label_value(x + 10, py, "Type:", ball_type)
-    draw_label_value(x + 10, py - 20, "Radius:", f"{ui_state.ball_radius * 1000:.1f} mm")
+    draw_label_value(
+        x + 10, py - 20, "Radius:", f"{ui_state.ball_radius * 1000:.1f} mm"
+    )
     draw_label_value(x + 10, py - 40, "Mass:", f"{ui_state.ball_mass * 1000:.1f} g")
     draw_label_value(x + 10, py - 60, "Stiffness:", f"{ui_state.ball_k / 1e6:.1f} MN/m")
 
@@ -275,19 +210,19 @@ def draw_surface_panel(
 ) -> None:
     """
     Нарисовать панель параметров поверхности.
-    
+
     Args:
         ui_state: Состояние UI.
         x, y: Позиция.
         width, height: Размеры.
     """
     draw_panel_background(x, y, width, height, "Surface")
-    
+
     py = y + height - 45
-    
+
     draw_label_value(x + 10, py, "Layers:", str(len(ui_state.surface_layers)))
     draw_label_value(x + 10, py - 20, "Friction Mul:", f"{ui_state.surface_fr_mul:.2f}")
-    
+
     # Список слоёв
     for i, layer in enumerate(ui_state.surface_layers[:3]):
         arcade.draw_text(
@@ -296,9 +231,9 @@ def draw_surface_panel(
             py - 45 - i * 20,
             COLOR_TEXT,
             10,
-            anchor_x="left"
+            anchor_x="left",
         )
-    
+
     if len(ui_state.surface_layers) > 3:
         arcade.draw_text(
             f"  ... and {len(ui_state.surface_layers) - 3} more",
@@ -306,7 +241,7 @@ def draw_surface_panel(
             py - 105,
             COLOR_LABEL,
             10,
-            anchor_x="left"
+            anchor_x="left",
         )
 
 
@@ -319,19 +254,23 @@ def draw_animation_panel(
 ) -> None:
     """
     Нарисовать панель анимации.
-    
+
     Args:
         ui_state: Состояние UI.
         x, y: Позиция.
         width, height: Размеры.
     """
     draw_panel_background(x, y, width, height, "Animation")
-    
+
     py = y + height - 45
-    
+
     draw_label_value(x + 10, py, "Time Scale:", f"{ui_state.time_scale:.4f}")
-    draw_label_value(x + 10, py - 20, "View Scale:", f"{ui_state.view_scale * 100:.0f}%")
-    draw_label_value(x + 10, py - 40, "Overlays:", "On" if ui_state.show_overlays else "Off")
+    draw_label_value(
+        x + 10, py - 20, "View Scale:", f"{ui_state.view_scale * 100:.0f}%"
+    )
+    draw_label_value(
+        x + 10, py - 40, "Overlays:", "On" if ui_state.show_overlays else "Off"
+    )
 
 
 def draw_action_buttons(
@@ -343,40 +282,45 @@ def draw_action_buttons(
 ) -> None:
     """
     Нарисовать кнопки действий.
-    
+
     Args:
         ui_state: Состояние UI.
         x, y: Позиция.
         button_width, button_height: Размеры кнопок.
     """
     spacing = 10
-    
+
     # Кнопка Запустить/Пауза
     is_running = ui_state.ui_mode == UIMode.RUNNING
     run_label = "Pause" if is_running else "Run"
-    draw_button(
-        x, y, button_width, button_height,
-        run_label,
-        enabled=True
-    )
-    
+    draw_button(x, y, button_width, button_height, run_label, enabled=True)
+
     # Кнопка Сравнить
     draw_button(
-        x + button_width + spacing, y, button_width, button_height,
+        x + button_width + spacing,
+        y,
+        button_width,
+        button_height,
         f"Compare ({ui_state.comparison_runs}/3)",
-        enabled=ui_state.ui_mode == UIMode.IDLE
+        enabled=ui_state.ui_mode == UIMode.IDLE,
     )
-    
+
     # Кнопка Самопроверка
     draw_button(
-        x + 2 * (button_width + spacing), y, button_width, button_height,
+        x + 2 * (button_width + spacing),
+        y,
+        button_width,
+        button_height,
         "Self Test",
-        enabled=True
+        enabled=True,
     )
-    
+
     # Кнопка Масштаб
     draw_button(
-        x + 3 * (button_width + spacing), y, button_width, button_height,
+        x + 3 * (button_width + spacing),
+        y,
+        button_width,
+        button_height,
         f"Zoom {ui_state.view_scale * 100:.0f}%",
-        enabled=True
+        enabled=True,
     )
