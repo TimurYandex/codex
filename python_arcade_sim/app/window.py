@@ -286,6 +286,28 @@ class SimulationWindow(arcade.Window):
         else:
             print("Self test: FAILED")
 
+    def _print_help(self) -> None:
+        """Вывести справку по управлению."""
+        print("\n" + "=" * 50)
+        print("УПРАВЛЕНИЕ СИМУЛЯТОРОМ")
+        print("=" * 50)
+        print("Пробел  - Пауза/продолжение")
+        print("R       - Перезапуск")
+        print("G       - Графики вкл/выкл")
+        print("O       - Оверлеи вкл/выкл")
+        print("Escape  - Выход")
+        print("-" * 50)
+        print("1/2/3   - Пресеты поверхности (classic/inv/hard)")
+        print("-" * 50)
+        print("↑/↓     - Скорость ±1 m/s")
+        print("←/→     - Угол ±5°")
+        print("W/S     - Вращение ±20 rad/s")
+        print("D       - Направление вращения")
+        print("+/-     - Скорость анимации")
+        print("-" * 50)
+        print("H       - Эта справка")
+        print("=" * 50 + "\n")
+
     def on_mouse_motion(self, x: float, y: float, dx: float, dy: float) -> None:
         """Отслеживание движения мыши."""
         self._mouse_x = int(x)
@@ -335,3 +357,65 @@ class SimulationWindow(arcade.Window):
             # 3: применить пресет hard
             self.ui_state.apply_surface_preset("hard")
             self.reset_simulation()
+
+        # ================================================================
+        # Быстрое изменение параметров (для "игры" с моделью)
+        # ================================================================
+
+        elif key == arcade.key.UP:
+            # Стрелка вверх: увеличить скорость
+            self.ui_state.speed = min(20.0, self.ui_state.speed + 1.0)
+            print(f"Speed: {self.ui_state.speed:.1f} m/s")
+            self.reset_simulation()
+
+        elif key == arcade.key.DOWN:
+            # Стрелка вниз: уменьшить скорость
+            self.ui_state.speed = max(1.0, self.ui_state.speed - 1.0)
+            print(f"Speed: {self.ui_state.speed:.1f} m/s")
+            self.reset_simulation()
+
+        elif key == arcade.key.LEFT:
+            # Стрелка влево: уменьшить угол (более пологий)
+            self.ui_state.angle = max(-80.0, self.ui_state.angle - 5.0)
+            print(f"Angle: {self.ui_state.angle:.1f} deg")
+            self.reset_simulation()
+
+        elif key == arcade.key.RIGHT:
+            # Стрелка вправо: увеличить угол (более крутой)
+            self.ui_state.angle = min(10.0, self.ui_state.angle + 5.0)
+            print(f"Angle: {self.ui_state.angle:.1f} deg")
+            self.reset_simulation()
+
+        elif key == arcade.key.W:
+            # W: увеличить вращение
+            self.ui_state.spin = min(200.0, self.ui_state.spin + 20.0)
+            print(f"Spin: {self.ui_state.spin:.1f} rad/s ({self.ui_state.spin_dir})")
+            self.reset_simulation()
+
+        elif key == arcade.key.S:
+            # S: уменьшить вращение
+            self.ui_state.spin = max(-200.0, self.ui_state.spin - 20.0)
+            print(f"Spin: {self.ui_state.spin:.1f} rad/s ({self.ui_state.spin_dir})")
+            self.reset_simulation()
+
+        elif key == arcade.key.D:
+            # D: изменить направление вращения
+            self.ui_state.spin_dir = "ccw" if self.ui_state.spin_dir == "cw" else "cw"
+            print(f"Spin direction: {self.ui_state.spin_dir}")
+            self.reset_simulation()
+
+        elif key == arcade.key.PLUS:
+            # +: увеличить масштаб времени (быстрее)
+            self.ui_state.time_scale = min(0.1, self.ui_state.time_scale * 1.5)
+            print(f"Time scale: {self.ui_state.time_scale:.4f}")
+            self.reset_simulation()
+
+        elif key == arcade.key.MINUS:
+            # -: уменьшить масштаб времени (медленнее)
+            self.ui_state.time_scale = max(0.001, self.ui_state.time_scale / 1.5)
+            print(f"Time scale: {self.ui_state.time_scale:.4f}")
+            self.reset_simulation()
+
+        elif key == arcade.key.H:
+            # H: показать справку
+            self._print_help()
