@@ -118,14 +118,17 @@ class SimulationWindow(arcade.Window):
         )
 
         # Рендерим графики (если включены)
+        # Примечание: графики могут замедлять отрисовку
         if self.ui_state.show_graphs:
-            draw_graphs(
-                self.model.get_history(),
-                x=10,
-                y=10,
-                graph_width=300,
-                graph_height=120,
-            )
+            # Отрисовываем только каждый 3-й кадр для производительности
+            if self._frame_count % 3 == 0:
+                draw_graphs(
+                    self.model.get_history(),
+                    x=10,
+                    y=10,
+                    graph_width=300,
+                    graph_height=120,
+                )
 
         # Рендерим UI панели
         self._draw_ui_panels()
