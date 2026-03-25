@@ -219,6 +219,11 @@ class SimulationWindow(arcade.Window):
 
             self.model.step(delta_time)
 
+        # Закрытие окна при завершении симуляции в debug-режиме
+        if DEBUG_MODE and self.model.is_finished():
+            print("\n=== Симуляция завершена, закрытие окна ===")
+            arcade.close_window()
+
     def on_mouse_press(
         self,
         x: float,

@@ -198,8 +198,8 @@ class ContactState:
     """Суммарная нормальная сила, Н."""
     ft_total: float = 0.0
     """Суммарная касательная сила, Н."""
-    penetration: float = 0.0
-    """Глубина проникновения, м."""
+    overlap: float = 0.0
+    """Перекрытие мяча с поверхностью, м."""
     slip_velocity: float = 0.0
     """Скорость проскальзывания, м/с."""
     stick_displacement: float = 0.0

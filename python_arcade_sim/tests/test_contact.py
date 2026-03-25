@@ -54,7 +54,7 @@ def test_init_contact_state() -> None:
     assert not state.is_active
     assert state.fn == 0.0
     assert state.ft == 0.0
-    assert state.penetration == 0.0
+    assert state.overlap == 0.0
     assert state.stick_displacement == 0.0
 
     print("✓ test_init_contact_state passed")
@@ -115,17 +115,17 @@ def test_contact_when_ball_touches() -> None:
     print("✓ test_contact_when_ball_touches passed")
 
 
-def test_contact_with_penetration() -> None:
-    """При проникновении возникает нормальная сила."""
+def test_contact_with_overlap() -> None:
+    """При перекрытии возникает нормальная сила."""
     surface, eq_params = create_test_surface()
 
-    # Искусственно поднимем узлы поверхности (имитация проникновения)
+    # Искусственно поднимем узлы поверхности (имитация перекрытия)
     for i in range(len(surface.u_y)):
         surface.u_y[i] = 0.001  # 1 мм вверх
 
     input_data = ContactInput(
         ball_x=0.0,
-        ball_y=0.019,  # Мяч ниже поверхности (проникновение)
+        ball_y=0.019,  # Мяч ниже поверхности (перекрытие)
         ball_r=0.02,
         ball_v_x=5.0,
         ball_v_y=-1.0,
@@ -141,14 +141,14 @@ def test_contact_with_penetration() -> None:
 
     assert result.is_active
     assert result.fn_total > 0
-    assert result.max_penetration > 0
+    assert result.max_overlap > 0
     assert len(result.active_nodes) > 0
 
     # Проверка отсутствия NaN
     assert not (result.fn_total != result.fn_total)
     assert not (result.ft_total != result.ft_total)
 
-    print("✓ test_contact_with_penetration passed")
+    print("✓ test_contact_with_overlap passed")
 
 
 def test_normal_force_no_nan() -> None:
@@ -346,7 +346,7 @@ def run_all_tests() -> None:
     test_init_contact_state()
     test_no_contact_when_ball_far()
     test_contact_when_ball_touches()
-    test_contact_with_penetration()
+    test_contact_with_overlap()
     test_normal_force_no_nan()
     test_stick_slip_transition()
     test_friction_coefficients_applied()

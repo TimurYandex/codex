@@ -10,7 +10,7 @@
 1. Геометрия контакта:
    - Для каждого узла i вычисляется расстояние dd = x_ball - x_i
    - Y поверхности мяча: y_surface = y_ball - sqrt(r² - dd²)
-   - Penetration (проникновение): δ = u_y[i] - y_surface
+   - Перекрытие (overlap): δ = u_y[i] - y_surface
    - Контакт активен только при δ > 0
 
 2. Нормальная сила Fn (закон Герца с демпфированием):
@@ -32,7 +32,7 @@
 4. Суммирование сил:
    - Суммарная Fn = Σ F_n[i] по всем активным узлам
    - Суммарная Ft = Σ F_t[i] по всем активным узлам
-   - Также вычисляются метрики: давление, активные узлы, max penetration
+   - Также вычисляются метрики: давление, активные узлы, max overlap
 
 5. Защита от численной нестабильности:
    - safe_sqrt для r² - dd² (защита от отрицательных значений)
@@ -131,7 +131,7 @@ class ContactResult:
         is_active: Контакт активен (хотя бы один узел в контакте).
         fn_total: Суммарная нормальная сила, Н.
         ft_total: Суммарная касательная сила, Н.
-        max_penetration: Максимальное проникновение, м.
+        max_overlap: Максимальное перекрытие, м.
         active_nodes: Индексы активных узлов (в контакте).
         pressure: Давление в активных узлах, Па.
         slip_velocity: Относительная скорость проскальзывания (средняя), м/с.
@@ -143,7 +143,7 @@ class ContactResult:
     is_active: bool = False
     fn_total: float = 0.0
     ft_total: float = 0.0
-    max_penetration: float = 0.0
+    max_overlap: float = 0.0
     active_nodes: list[int] = field(default_factory=list)
     pressure: list[float] = field(default_factory=list)
     slip_velocity: float = 0.0
@@ -168,7 +168,7 @@ def compute_contact(
 
     1. Геометрия контакта:
        - Определяем узлы в пределах радиуса мяча (|dd| < r)
-       - Для каждого узла вычисляем penetration δ
+       - Для каждого узла вычисляем overlap δ
        - Контакт активен только при δ > 0
 
     2. Нормальная сила (для каждого активного узла):
@@ -189,7 +189,7 @@ def compute_contact(
 
     5. Метрики:
        - slip_share накапливается во времени
-       - max_penetration для визуализации деформации
+       - max_overlap для визуализации деформации
 
     Args:
         input_data: Входные данные (состояние мяча, поверхности, параметры).
@@ -226,7 +226,7 @@ def compute_contact(
 
     fn_total = 0.0
     ft_total = 0.0
-    max_penetration = 0.0
+    max_overlap = 0.0
     active_nodes = []
     pressure = []
 
@@ -262,16 +262,16 @@ def compute_contact(
         # Y поверхности мяча в точке узла
         y_ball_surface = compute_ball_surface_y(ball_x, ball_y, ball_r, node_x)
 
-        # Penetration (проникновение)
+        # Перекрытие (overlap)
         # δ > 0 означает, что узел внутри мяча (контакт активен)
-        penetration = node_u_y - y_ball_surface
+        overlap = node_u_y - y_ball_surface
 
-        if penetration <= 0:
+        if overlap <= 0:
             continue
 
         # Узел в контакте
         active_nodes.append(i)
-        max_penetration = max(max_penetration, penetration)
+        max_overlap = max(max_overlap, overlap)
 
         # ---------------------------------------------------------------
         # 2. Нормальная сила
@@ -281,7 +281,7 @@ def compute_contact(
         v_rel_n = -(ball_v_y - node_v_y)
 
         # Упругая составляющая (закон Герца: F = k * δ^p)
-        fn_elastic = cp.k_c * (penetration**cp.p)
+        fn_elastic = cp.k_c * (overlap**cp.p)
 
         # Демпфирование (только при сближении)
         fn_damping = cp.c_c * max(0.0, v_rel_n)
@@ -359,7 +359,7 @@ def compute_contact(
         is_active=len(active_nodes) > 0,
         fn_total=fn_total,
         ft_total=ft_total,
-        max_penetration=max_penetration,
+        max_overlap=max_overlap,
         active_nodes=active_nodes,
         pressure=pressure,
         slip_velocity=avg_slip_velocity,
@@ -381,7 +381,7 @@ def init_contact_state() -> ContactState:
     Начальное состояние:
     - is_active = False (нет контакта)
     - fn = 0, ft = 0 (нет сил)
-    - penetration = 0 (нет проникновения)
+    - overlap = 0 (нет перекрытия)
     - stick_displacement = 0 (нет накопленного смещения)
 
     Returns:
@@ -391,7 +391,7 @@ def init_contact_state() -> ContactState:
         is_active=False,
         fn=0.0,
         ft=0.0,
-        penetration=0.0,
+        overlap=0.0,
         slip_velocity=0.0,
         stick_displacement=0.0,
         is_slipping=False,
@@ -470,7 +470,7 @@ if __name__ == "__main__":
         f"Contact: is_active={result2.is_active}, fn={result2.fn_total:.2f}, ft={result2.ft_total:.2f}"
     )
     print(
-        f"  active_nodes={len(result2.active_nodes)}, max_pen={result2.max_penetration:.6f}"
+        f"  active_nodes={len(result2.active_nodes)}, max_overlap={result2.max_overlap:.6f}"
     )
 
     print("\n✅ All basic tests passed!")

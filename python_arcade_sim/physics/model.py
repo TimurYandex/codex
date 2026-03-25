@@ -43,15 +43,24 @@ if __name__ == "__main__":
 
 # =============================================================================
 
-# Для отладки (импортируется из app.window)
-try:
-    from app.window import DEBUG_MODE
-except ImportError:
-    DEBUG_MODE = False
-
+import math
 from typing import Final
 
+
+# Для отладки (проверяется динамически через app.window.DEBUG_MODE)
+def _get_debug_mode() -> bool:
+    """Получить текущее значение DEBUG_MODE из app.window."""
+    try:
+        from app.window import DEBUG_MODE
+
+        return DEBUG_MODE
+    except ImportError:
+        return False
+
+
 from config.constants import (
+    BALL_Y_MAX,
+    CONTACT_SUBSTEPS,
     DETACH_NO_CONTACT_STEPS,
     DETACH_VY_THRESHOLD,
     DETACH_Y_MARGIN,
@@ -122,7 +131,7 @@ class PhysicsModel:
         _ball: Состояние мяча (позиция, скорость, вращение)
         _surface: Состояние поверхности (узлы, смещения, скорости)
         _spikes: Состояние шипов (наклон, скорость наклона)
-        _contact: Состояние контакта (силы, penetration, slip)
+        _contact: Состояние контакта (силы, overlap, slip)
         _history: История для графиков (Fn, Ft, def, slip, omega, vx, vy)
         _metrics: Итоговые метрики (v_out, omega_out, contact_time, ...)
         _time: Текущее время симуляции
@@ -299,8 +308,10 @@ class PhysicsModel:
         Этапы шага:
         1. Применение масштаба времени: scaled_dt = dt * time_scale
         2. Обновление времени: time += scaled_dt
-        3. Вызов соответствующего метода шага (_step_preflight/contact/post)
-        4. Запись точки истории (Fn, Ft, def, slip, omega, vx, vy)
+        3. Вычисление ускорений (для отладочного лога)
+        4. Вызов соответствующего метода шага (_step_preflight/contact/post)
+        5. Запись точки истории (Fn, Ft, def, slip, omega, vx, vy)
+        6. Вывод отладочного лога (если DEBUG_MODE)
 
         Args:
             dt: Базовый шаг времени (будет умножен на time_scale из params).
@@ -314,6 +325,27 @@ class PhysicsModel:
         # Обновляем время
         self._time += scaled_dt
 
+        # ====================================================================
+        # Вычисление ускорений (для отладочного лога)
+        # ====================================================================
+
+        ball_params = self._params.ball
+
+        # Ускорения до шага (для лога)
+        if self._mode == SimulationMode.CONTACT:
+            forces = BallForces(
+                fn=self._contact.fn_total,
+                ft=self._contact.ft_total,
+            )
+        else:
+            forces = BallForces(fn=0.0, ft=0.0)
+
+        accelerations = compute_ball_accelerations(self._ball, ball_params, forces)
+
+        # ====================================================================
+        # Выполняем шаг физики
+        # ====================================================================
+
         # В зависимости от режима выполняем разные действия
         if self._mode == SimulationMode.PREFLIGHT:
             self._step_preflight(scaled_dt)
@@ -325,6 +357,13 @@ class PhysicsModel:
         # Записываем точку истории
         self._record_history()
 
+        # ====================================================================
+        # Отладочный лог
+        # ====================================================================
+
+        if _get_debug_mode():
+            self.print_debug_log(accelerations)
+
     def _step_preflight(self, dt: float) -> None:
         """
         Шаг в режиме подлёта (мяч движется к поверхности).
@@ -335,8 +374,9 @@ class PhysicsModel:
         - Позиция: x(t) = x0 + vx * t, y(t) = y0 + vy * t - 0.5 * g * t²
 
         Переход в режим CONTACT:
-        - Когда мяч достигает поверхности (y <= r + max(u_y))
-        - Или когда начинается контакт (penetration > 0)
+        - Когда мяч достигнет поверхности (y <= r + max(u_y))
+        - Используем прогноз позиции на следующий шаг
+        - При переходе делаем позиционную коррекцию (мяч устанавливается в точку касания)
 
         Args:
             dt: Шаг времени (уже масштабированный).
@@ -352,17 +392,73 @@ class PhysicsModel:
         integrate_ball(self._ball, ball_params, accelerations, dt)
 
         # Проверка перехода в контакт
-        # Контакт начинается, когда мяч достигает поверхности
         surface_y = max(self._surface.u_y) if self._surface.u_y else 0.0
-        if self._ball.y <= ball_params.radius + surface_y:
+        y_threshold = ball_params.radius + surface_y
+
+        # Проверяем, достиг ли мяч поверхности
+        if self._ball.y <= y_threshold:
+            # Мяч достиг или "пробил" поверхность — делаем позиционную коррекцию
+            self._correct_ball_position_at_contact(surface_y)
             self._mode = SimulationMode.CONTACT
             self._contact_start_time = self._time
+
+    def _correct_ball_position_at_contact(self, surface_y: float) -> None:
+        """
+        Скорректировать позицию мяча в момент перехода в контакт.
+
+        Физический смысл:
+        - Если мяч "пробил" поверхность (y < r), устанавливаем его в точку касания
+        - Используем линейную интерполяцию для нахождения точки касания
+        - Сохраняем скорость и вращение без изменений
+
+        Алгоритм:
+        1. Находим предыдущую позицию через обратную экстраполяцию
+        2. Линейно интерполируем между предыдущей и текущей позицией
+        3. Находим точку, где y = r + surface_y (касание)
+        4. Устанавливаем мяч в эту точку
+
+        Args:
+            surface_y: Уровень поверхности (max u_y).
+        """
+        ball_params = self._params.ball
+        y_target = ball_params.radius + surface_y
+
+        # Если мяч уже на правильной высоте — ничего не делаем
+        if abs(self._ball.y - y_target) < 1e-9:
+            return
+
+        # Для линейной интерполяции нужна предыдущая позиция
+        # Используем обратную экстраполяцию: x_prev = x - vx * dt
+        dt = self._dt if hasattr(self, "_dt") else 1e-5
+
+        # Предыдущая позиция (обратная экстраполяция)
+        prev_x = self._ball.x - self._ball.v_x * dt
+        prev_y = self._ball.y - self._ball.v_y * dt
+
+        # Линейная интерполяция: находим t, при котором y = y_target
+        dy = self._ball.y - prev_y
+        if abs(dy) < 1e-12:
+            # Мяч почти не двигался по Y — просто устанавливаем y = y_target
+            self._ball.y = y_target
+            return
+
+        t = (y_target - prev_y) / dy
+        t = max(0.0, min(1.0, t))
+
+        # Новая позиция в точке касания
+        self._ball.x = prev_x + (self._ball.x - prev_x) * t
+        self._ball.y = y_target
 
     def _step_contact(self, dt: float) -> None:
         """
         Шаг в режиме контакта (мяч взаимодействует с поверхностью).
 
         Физическая модель:
+        ==================
+        Используем суб-степпинг для детализации физики контакта:
+        - Разбиваем шаг dt на CONTACT_SUBSTEPS подшагов по dt_sub = dt / CONTACT_SUBSTEPS
+        - На каждом подшаге: расчёт сил, интегрирование поверхности и мяча
+        - Для отрисовки передаётся состояние только после последнего подшага
 
         1. Расчёт сил контакта (Fn, Ft) для каждого узла
         2. Динамика шипов (наклон θ, влияние на трение)
@@ -380,120 +476,138 @@ class PhysicsModel:
         ball_params = self._params.ball
 
         # ====================================================================
-        # 1. Расчёт сил контакта
+        # Суб-степпинг: разбиваем шаг на CONTACT_SUBSTEPS подшагов
         # ====================================================================
 
-        contact_input = ContactInput(
-            ball_x=self._ball.x,
-            ball_y=self._ball.y,
-            ball_r=ball_params.radius,
-            ball_v_x=self._ball.v_x,
-            ball_v_y=self._ball.v_y,
-            ball_omega=self._ball.omega,
-            surface=self._surface,
-            eq_params=self._eq_params,
-            contact_params=self._contact_params,
-            dt=dt,
-        )
+        n_substeps = CONTACT_SUBSTEPS
+        dt_sub = dt / n_substeps
 
-        contact_result = compute_contact(contact_input, self._contact)
+        for substep in range(n_substeps):
+            # Сохраняем состояние перед подшагом (для отладочного лога)
+            if substep == 0:
+                prev_fn = self._contact.fn_total
+                prev_ft = self._contact.ft_total
 
-        # Копируем поля из ContactResult в ContactState
-        self._contact.is_active = contact_result.is_active
-        self._contact.fn_total = contact_result.fn_total
-        self._contact.ft_total = contact_result.ft_total
-        self._contact.penetration = contact_result.max_penetration
-        self._contact.slip_velocity = contact_result.slip_velocity
-        self._contact.stick_displacement = contact_result.stick_displacement
-        self._contact.is_slipping = contact_result.is_slipping
-        self._contact.active_nodes = contact_result.active_nodes
-        self._contact.pressure = contact_result.pressure
+            # ================================================================
+            # 1. Расчёт сил контакта
+            # ================================================================
 
-        # ====================================================================
-        # 2. Динамика шипов
-        # ====================================================================
-
-        # Определяем режим шипов из верхнего слоя
-        spike_mode = (
-            self._params.surface.layers[0].spike_mode
-            if self._params.surface.layers
-            else None
-        )
-
-        spikes_input = SpikesInput(
-            spike_params=self._eq_params.spike_params,
-            mode=spike_mode,
-            ft_contact=self._contact.ft_total,
-            v_rel_t=self._contact.slip_velocity,
-            dt=dt,
-        )
-
-        self._spikes = compute_spikes_dynamics(self._spikes, spikes_input)
-
-        # Применяем влияние шипов на трение
-        if spike_mode and spike_mode.value != "none":
-            mu_s_new, mu_k_new = apply_spikes_to_friction(
-                self._eq_params.mu_s_eq,
-                self._eq_params.mu_k_eq,
-                self._spikes,
-            )
-            self._contact_params.mu_s = mu_s_new
-            self._contact_params.mu_k = mu_k_new
-
-        # ====================================================================
-        # 3. Интегрирование поверхности
-        # ====================================================================
-
-        forces_surface = compute_internal_forces(
-            self._surface, self._params.surface, self._eq_params
-        )
-        integrate_surface(
-            self._surface, forces_surface, self._eq_params, self._params.surface, dt
-        )
-
-        # Обновляем метрики деформации
-        if self._surface.u_y:
-            current_def = max(abs(u) for u in self._surface.u_y)
-            self._max_def = max(self._max_def, current_def)
-        if self._surface.u_x:
-            current_shift = max(abs(u) for u in self._surface.u_x)
-            self._max_shift = max(self._max_shift, current_shift)
-
-        # Накопление времени проскальзывания
-        if self._contact.is_slipping:
-            self._slip_time += dt
-
-        # ====================================================================
-        # 4. Интегрирование мяча
-        # ====================================================================
-
-        ball_forces = BallForces(
-            fn=self._contact.fn_total,
-            ft=self._contact.ft_total + self._spikes.ft_additional,
-        )
-
-        accelerations = compute_ball_accelerations(self._ball, ball_params, ball_forces)
-
-        # Отладка: вывод сил при контакте
-        if DEBUG_MODE and self._contact.is_active and self._time < 0.3:
-            omega_dir = "CW (по часовой)" if self._ball.omega < 0 else "CCW (против)"
-            print(
-                f"t={self._time:.4f}: Fn={self._contact.fn_total:.1f}N, Ft={self._contact.ft_total:.1f}N, "
-                f"ax={accelerations[0]:.0f}, ay={accelerations[1]:.0f}, "
-                f"v_x={self._ball.v_x:.2f}, v_y={self._ball.v_y:.2f}, "
-                f"omega={self._ball.omega:.1f} ({omega_dir})"
+            contact_input = ContactInput(
+                ball_x=self._ball.x,
+                ball_y=self._ball.y,
+                ball_r=ball_params.radius,
+                ball_v_x=self._ball.v_x,
+                ball_v_y=self._ball.v_y,
+                ball_omega=self._ball.omega,
+                surface=self._surface,
+                eq_params=self._eq_params,
+                contact_params=self._contact_params,
+                dt=dt_sub,
             )
 
-        integrate_ball(self._ball, ball_params, accelerations, dt)
+            contact_result = compute_contact(contact_input, self._contact)
+
+            # Копируем поля из ContactResult в ContactState
+            self._contact.is_active = contact_result.is_active
+            self._contact.fn_total = contact_result.fn_total
+            self._contact.ft_total = contact_result.ft_total
+            self._contact.overlap = contact_result.max_overlap
+            self._contact.slip_velocity = contact_result.slip_velocity
+            self._contact.stick_displacement = contact_result.stick_displacement
+            self._contact.is_slipping = contact_result.is_slipping
+            self._contact.active_nodes = contact_result.active_nodes
+            self._contact.pressure = contact_result.pressure
+
+            # ================================================================
+            # 2. Динамика шипов
+            # ================================================================
+
+            # Определяем режим шипов из верхнего слоя
+            spike_mode = (
+                self._params.surface.layers[0].spike_mode
+                if self._params.surface.layers
+                else None
+            )
+
+            spikes_input = SpikesInput(
+                spike_params=self._eq_params.spike_params,
+                mode=spike_mode,
+                ft_contact=self._contact.ft_total,
+                v_rel_t=self._contact.slip_velocity,
+                dt=dt_sub,
+            )
+
+            self._spikes = compute_spikes_dynamics(self._spikes, spikes_input)
+
+            # Применяем влияние шипов на трение
+            if spike_mode and spike_mode.value != "none":
+                mu_s_new, mu_k_new = apply_spikes_to_friction(
+                    self._eq_params.mu_s_eq,
+                    self._eq_params.mu_k_eq,
+                    self._spikes,
+                )
+                self._contact_params.mu_s = mu_s_new
+                self._contact_params.mu_k = mu_k_new
+
+            # ================================================================
+            # 3. Интегрирование поверхности
+            # ================================================================
+
+            forces_surface = compute_internal_forces(
+                self._surface, self._params.surface, self._eq_params
+            )
+            integrate_surface(
+                self._surface,
+                forces_surface,
+                self._eq_params,
+                self._params.surface,
+                dt_sub,
+            )
+
+            # Обновляем метрики деформации
+            if self._surface.u_y:
+                current_def = max(abs(u) for u in self._surface.u_y)
+                self._max_def = max(self._max_def, current_def)
+            if self._surface.u_x:
+                current_shift = max(abs(u) for u in self._surface.u_x)
+                self._max_shift = max(self._max_shift, current_shift)
+
+            # Накопление времени проскальзывания
+            if self._contact.is_slipping:
+                self._slip_time += dt_sub
+
+            # ================================================================
+            # 4. Интегрирование мяча
+            # ================================================================
+
+            ball_forces = BallForces(
+                fn=self._contact.fn_total,
+                ft=self._contact.ft_total + self._spikes.ft_additional,
+            )
+
+            accelerations = compute_ball_accelerations(
+                self._ball, ball_params, ball_forces
+            )
+
+            # Отладка: вывод сил на каждом подшаге контакта
+            if _get_debug_mode():
+                print(
+                    f"t={self._time:.5f} mode=contact.{substep:02d} pos=({self._ball.x:7.4f}, {self._ball.y:7.4f}) "
+                    f"v=({self._ball.v_x:7.2f}, {self._ball.v_y:7.2f}) ω={self._ball.omega:7.1f} "
+                    f"a=({accelerations[0]:7.2f}, {accelerations[1]:7.2f}) "
+                    f"F=({self._contact.fn_total:7.1f}, {self._contact.ft_total:7.1f})"
+                )
+
+            integrate_ball(self._ball, ball_params, accelerations, dt_sub)
+
+            # ================================================================
+            # 5. Энергетическая защита
+            # ================================================================
+
+            clamp_rebound_priority(self._ball, ball_params, self._ke_initial)
 
         # ====================================================================
-        # 5. Энергетическая защита
-        # ====================================================================
-
-        clamp_rebound_priority(self._ball, ball_params, self._ke_initial)
-
-        # ====================================================================
-        # 6. Проверка перехода в пост-контактный полёт
+        # 6. Проверка перехода в пост-контактный полёт (после всех подшагов)
         # ====================================================================
 
         if not self._contact.is_active:
@@ -534,6 +648,9 @@ class PhysicsModel:
         - energy_loss = KE_initial - KE_final
         - slip_share = t_slip / t_contact
 
+        Критерий завершения:
+        - Мяч достиг верхней границы экрана (y >= BALL_Y_MAX)
+
         Args:
             dt: Шаг времени (уже масштабированный).
         """
@@ -546,8 +663,8 @@ class PhysicsModel:
         step_ball_post_flight(self._ball, ball_params, dt)
         self._post_time += dt
 
-        # Проверка завершения
-        if self._post_time >= SIM_POST_DURATION:
+        # Проверка завершения: мяч улетел за верхнюю границу экрана
+        if self._ball.y >= BALL_Y_MAX:
             self._mode = SimulationMode.FINISHED
             self._compute_final_metrics()
 
@@ -727,6 +844,11 @@ class PhysicsModel:
         return self._surface
 
     @property
+    def contact(self) -> ContactState:
+        """Состояние контакта."""
+        return self._contact
+
+    @property
     def time(self) -> float:
         """Текущее время симуляции."""
         return self._time
@@ -735,6 +857,30 @@ class PhysicsModel:
     def params(self) -> SimulationParams | None:
         """Параметры симуляции."""
         return self._params
+
+    # ========================================================================
+    # Отладочный лог
+    # ========================================================================
+
+    def print_debug_log(self, accelerations: tuple[float, float, float]) -> None:
+        """
+        Вывести детальную информацию о шаге симуляции.
+
+        Формат:
+        t=0.00000 mode=PREFLIGHT pos=(0.150, 0.108) v=(8.66, -5.00) ω=0.0 a=(0.00, -9.81) F=(0.0, 0.0)
+
+        Args:
+            accelerations: (a_x, a_y, omega_dot) — текущие ускорения.
+        """
+        a_x, a_y, _ = accelerations
+        print(
+            f"t={self._time:.5f} mode={self._mode.value:10s} "
+            f"pos=({self._ball.x:7.4f}, {self._ball.y:7.4f}) "
+            f"v=({self._ball.v_x:7.2f}, {self._ball.v_y:7.2f}) "
+            f"ω={self._ball.omega:7.1f} "
+            f"a=({a_x:7.2f}, {a_y:7.2f}) "
+            f"F=({self._contact.fn_total:7.1f}, {self._contact.ft_total:7.1f})"
+        )
 
 
 # =============================================================================
