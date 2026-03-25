@@ -466,6 +466,14 @@ class PhysicsModel:
         )
 
         accelerations = compute_ball_accelerations(self._ball, ball_params, ball_forces)
+
+        # Отладка: вывод сил при контакте
+        if self._contact.is_active and self._time < 0.2:
+            print(
+                f"t={self._time:.4f}: Fn={self._contact.fn_total:.1f}N, Ft={self._contact.ft_total:.1f}N, "
+                f"ax={accelerations[0]:.0f}, ay={accelerations[1]:.0f}, v_x={self._ball.v_x:.2f}, v_y={self._ball.v_y:.2f}"
+            )
+
         integrate_ball(self._ball, ball_params, accelerations, dt)
 
         # ====================================================================
