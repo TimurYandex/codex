@@ -4,6 +4,15 @@
 Не зависит от arcade. Используется только для расчёта физики.
 """
 
+from .ball import (
+    BallForces,
+    clamp_rebound,
+    clamp_rebound_priority,
+    compute_ball_accelerations,
+    compute_ball_kinetic_energy,
+    integrate_ball,
+    step_ball_post_flight,
+)
 from .contact import (
     ContactInput,
     ContactParams,
@@ -49,6 +58,14 @@ from .sim_types import (
 )
 
 __all__ = [
+    # Ball
+    "BallForces",
+    "clamp_rebound",
+    "clamp_rebound_priority",
+    "compute_ball_accelerations",
+    "compute_ball_kinetic_energy",
+    "integrate_ball",
+    "step_ball_post_flight",
     # Contact
     "ContactInput",
     "ContactParams",
