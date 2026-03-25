@@ -46,7 +46,7 @@
 | `v_out` | sqrt(vx² + vy²) |
 | `omega_out` | omega |
 | `angle_out` | atan2(vy, vx) * 180/π |
-| `contact_time` | полное время (включая подлёт) |
+| `contact_time` | время контакта (без подлёта), с |
 | `max_def` | max(|u_y|) за время контакта |
 | `max_shift` | max(|u_x|) за время контакта |
 | `slip_share` | t_slip / t_contact |

@@ -539,7 +539,7 @@ class PhysicsModel:
         - v_out: итоговая скорость, м/с
         - omega_out: итоговое вращение, рад/с
         - angle_out: итоговый угол, градусы
-        - contact_time: полное время контакта (включая подлёт), с
+        - contact_time: время контакта (без подлёта), с
         - max_def: максимальная деформация поверхности, м
         - max_shift: максимальное касательное смещение, м
         - slip_share: доля времени проскальзывания
@@ -583,7 +583,7 @@ class PhysicsModel:
             v_out=v_out,
             omega_out=self._ball.omega,
             angle_out=angle_out,
-            contact_time=self._time,  # Включает подлёт
+            contact_time=contact_duration,  # Только время контакта, без подлёта
             max_def=self._max_def,
             max_shift=self._max_shift,
             slip_share=slip_share,
@@ -638,7 +638,7 @@ class PhysicsModel:
         - v_out: итоговая скорость мяча после отскока, м/с
         - omega_out: итоговое вращение, рад/с
         - angle_out: итоговый угол вылета (от горизонтали), градусы
-        - contact_time: полное время контакта (включая подлёт), с
+        - contact_time: время контакта (без подлёта), с
         - max_def: максимальная деформация поверхности, м
         - max_shift: максимальное касательное смещение узлов, м
         - slip_share: доля времени проскальзывания (0=весь stick, 1=весь slip)

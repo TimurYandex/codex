@@ -191,7 +191,7 @@ UI/рендеринг выполняются через механизмы `arca
 
 ### 6. Выходные данные
 
-- Числовые метрики: `v_out`, `omega_out`, `angle_out`, `contact_time` (включает подлет), `max_def`, `max_shift`, `slip_share`, `energy_loss`, `J_n`, `J_t`.
+- Числовые метрики: `v_out`, `omega_out`, `angle_out`, `contact_time` (время контакта), `max_def`, `max_shift`, `slip_share`, `energy_loss`, `J_n`, `J_t`.
 - Графики: `Fn`, `Ft`, `def`, `slip`, `ω`, `vx`, `vy`.
 - Сравнение до 3 прогонов.
 

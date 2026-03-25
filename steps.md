@@ -179,7 +179,7 @@
    - `x0 = -v_x * t_pre`
    - `y0 = r - v_y * t_pre + 0.5*g*t_pre^2`
 3. Реализовать метрики:
-   - `contact_time` (включает подлет, как в текущей реализации)
+   - `contact_time` (время контакта, без подлёта)
    - `max_def`, `max_shift`, `slip_share`, `energy_loss`, `J_n`, `J_t`
 4. Реализовать хранение истории для графиков:
    - временные серии `Fn, Ft, def, slip, omega, vx, vy`
