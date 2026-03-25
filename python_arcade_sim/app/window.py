@@ -199,9 +199,14 @@ class SimulationWindow(arcade.Window):
             snapshot = self.model.get_render_snapshot()
             if snapshot.contact.is_active:
                 # Замедление в 20 раз при контакте
-                self.model.step(delta_time * self.ui_state.time_scale / 20)
+                effective_dt = delta_time / 20
             else:
-                self.model.step(delta_time * self.ui_state.time_scale)
+                effective_dt = delta_time
+
+            # Применяем масштаб времени из UI
+            effective_dt *= self.ui_state.time_scale
+
+            self.model.step(effective_dt)
 
     def on_mouse_press(
         self,
@@ -421,14 +426,14 @@ class SimulationWindow(arcade.Window):
             print(f"Spin direction: {self.ui_state.spin_dir}")
             self.reset_simulation()
 
-        elif key == arcade.key.NUM_PLUS or key == arcade.key.PLUS:
-            # Numpad + или +: увеличить масштаб времени (быстрее)
+        elif key == arcade.key.EQUAL:
+            # = или +: увеличить масштаб времени (быстрее)
             self.ui_state.time_scale = min(0.1, self.ui_state.time_scale * 1.5)
             print(f"Time scale: {self.ui_state.time_scale:.4f}")
             self.reset_simulation()
 
-        elif key == arcade.key.NUM_MINUS or key == arcade.key.MINUS:
-            # Numpad - или -: уменьшить масштаб времени (медленнее)
+        elif key == arcade.key.MINUS:
+            # -: уменьшить масштаб времени (медленнее)
             self.ui_state.time_scale = max(0.001, self.ui_state.time_scale / 1.5)
             print(f"Time scale: {self.ui_state.time_scale:.4f}")
             self.reset_simulation()
