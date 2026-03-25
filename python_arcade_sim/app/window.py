@@ -195,18 +195,7 @@ class SimulationWindow(arcade.Window):
     def on_update(self, delta_time: float) -> None:
         """Обновление физики."""
         if self.ui_state.ui_mode == UIMode.RUNNING and not self.model.is_finished():
-            # Автоматическое замедление при контакте (для отладки)
-            snapshot = self.model.get_render_snapshot()
-            if snapshot.contact.is_active:
-                # Замедление в 20 раз при контакте
-                effective_dt = delta_time / 20
-            else:
-                effective_dt = delta_time
-
-            # Применяем масштаб времени из UI
-            effective_dt *= self.ui_state.time_scale
-
-            self.model.step(effective_dt)
+            self.model.step(delta_time)
 
     def on_mouse_press(
         self,
