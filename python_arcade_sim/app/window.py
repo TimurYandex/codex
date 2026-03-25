@@ -195,7 +195,13 @@ class SimulationWindow(arcade.Window):
     def on_update(self, delta_time: float) -> None:
         """Обновление физики."""
         if self.ui_state.ui_mode == UIMode.RUNNING and not self.model.is_finished():
-            self.model.step(delta_time)
+            # Автоматическое замедление при контакте (для отладки)
+            snapshot = self.model.get_render_snapshot()
+            if snapshot.contact.is_active:
+                # Замедление в 20 раз при контакте
+                self.model.step(delta_time * self.ui_state.time_scale / 20)
+            else:
+                self.model.step(delta_time * self.ui_state.time_scale)
 
     def on_mouse_press(
         self,
@@ -415,14 +421,14 @@ class SimulationWindow(arcade.Window):
             print(f"Spin direction: {self.ui_state.spin_dir}")
             self.reset_simulation()
 
-        elif key == arcade.key.PLUS:
-            # +: увеличить масштаб времени (быстрее)
+        elif key == arcade.key.NUM_PLUS or key == arcade.key.PLUS:
+            # Numpad + или +: увеличить масштаб времени (быстрее)
             self.ui_state.time_scale = min(0.1, self.ui_state.time_scale * 1.5)
             print(f"Time scale: {self.ui_state.time_scale:.4f}")
             self.reset_simulation()
 
-        elif key == arcade.key.MINUS:
-            # -: уменьшить масштаб времени (медленнее)
+        elif key == arcade.key.NUM_MINUS or key == arcade.key.MINUS:
+            # Numpad - или -: уменьшить масштаб времени (медленнее)
             self.ui_state.time_scale = max(0.001, self.ui_state.time_scale / 1.5)
             print(f"Time scale: {self.ui_state.time_scale:.4f}")
             self.reset_simulation()

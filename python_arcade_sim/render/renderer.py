@@ -51,7 +51,7 @@ class Renderer:
         self,
         window_width: int = 1280,
         window_height: int = 720,
-        scale: float = 1.0,
+        scale: float = 1.5,
     ) -> None:
         """
         Инициализировать рендерер.
@@ -65,12 +65,12 @@ class Renderer:
         self.window_height = window_height
         self.scale = scale
 
-        # Центр окна (точка удара)
+        # Центр окна (точка удара) - смещён вниз для лучшего обзора
         self.center_x = window_width / 2
-        self.center_y = window_height / 2 + 100
+        self.center_y = window_height / 2 - 50
 
-        # Масштаб: пикселей на метр
-        self.pixels_per_meter = 2000 * scale
+        # Масштаб: пикселей на метр (увеличено для крупности)
+        self.pixels_per_meter = 2500 * scale
 
         # Текстовые объекты для статуса (создаются один раз)
         self._mode_text = Text("", 10, window_height - 30, arcade.color.WHITE, 14)
