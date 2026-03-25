@@ -8,6 +8,7 @@
 import math
 
 import arcade
+from arcade import Text
 
 from physics.sim_types import RenderSnapshot, SimulationMode, SurfaceParams, LayerParams
 from config.constants import SURFACE_HALF_WIDTH, BALL_RADIUS_DEFAULT
@@ -70,6 +71,10 @@ class Renderer:
 
         # Масштаб: пикселей на метр
         self.pixels_per_meter = 2000 * scale
+
+        # Текстовые объекты для статуса (создаются один раз)
+        self._mode_text = Text("", 10, window_height - 30, arcade.color.WHITE, 14)
+        self._time_text = Text("", 10, window_height - 50, arcade.color.WHITE, 14)
 
     def set_scale(self, scale: float) -> None:
         """Установить масштаб отображения."""
@@ -298,12 +303,12 @@ class Renderer:
             snapshot: Снимок состояния.
             metrics: Метрики симуляции (если есть).
         """
-        mode_text = f"Mode: {snapshot.mode.value}"
-        arcade.draw_text(mode_text, 10, self.window_height - 30, arcade.color.WHITE, 14)
+        # Обновляем текст и рисуем
+        self._mode_text.text = f"Mode: {snapshot.mode.value}"
+        self._mode_text.draw()
 
-        # Время симуляции
-        time_text = f"Time: {snapshot.ball.x:.3f}"
-        arcade.draw_text(time_text, 10, self.window_height - 50, arcade.color.WHITE, 14)
+        self._time_text.text = f"Time: {self.pixels_per_meter / 2000:.3f}s"
+        self._time_text.draw()
 
     def render(
         self,

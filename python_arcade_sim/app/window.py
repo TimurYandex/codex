@@ -5,6 +5,7 @@
 """
 
 import arcade
+from arcade import Text
 
 from physics.model import PhysicsModel
 from physics.sim_types import SimulationMetrics
@@ -66,6 +67,28 @@ class SimulationWindow(arcade.Window):
         self._button_width = 100
         self._button_height = 30
         self._button_spacing = 10
+
+        # Текстовые объекты для сообщений (создаются один раз)
+        self._pause_text = Text(
+            "PAUSED - Click or Space to resume",
+            width // 2 - 120,
+            height // 2,
+            arcade.color.YELLOW,
+            20,
+        )
+        self._finished_text = Text(
+            "FINISHED - Click or R to restart",
+            width // 2 - 110,
+            height // 2 + 30,
+            arcade.color.GREEN,
+            20,
+        )
+
+        # Текстовые объекты для статуса (создаются один раз)
+        self._status_texts = [
+            Text("", 10, height - 30 - i * 20, arcade.color.WHITE, 14)
+            for i in range(7)  # Максимум 7 строк статуса
+        ]
 
         # Запуск симуляции
         self.reset_simulation()
@@ -156,30 +179,18 @@ class SimulationWindow(arcade.Window):
                 ]
             )
 
-        for i, line in enumerate(status_lines):
-            arcade.draw_text(
-                line, 10, self.height - 30 - i * 20, arcade.color.WHITE, 14
-            )
+        # Обновляем и рисуем текстовые объекты
+        for i, line in enumerate(status_lines[:7]):
+            self._status_texts[i].text = line
+            self._status_texts[i].draw()
 
         # Сообщение о паузе
         if self.ui_state.ui_mode == UIMode.PAUSED:
-            arcade.draw_text(
-                "PAUSED - Click or Space to resume",
-                self.width // 2 - 120,
-                self.height // 2,
-                arcade.color.YELLOW,
-                20,
-            )
+            self._pause_text.draw()
 
         # Сообщение о завершении
         if self.model.is_finished():
-            arcade.draw_text(
-                "FINISHED - Click or R to restart",
-                self.width // 2 - 110,
-                self.height // 2 + 30,
-                arcade.color.GREEN,
-                20,
-            )
+            self._finished_text.draw()
 
     def on_update(self, delta_time: float) -> None:
         """Обновление физики."""
