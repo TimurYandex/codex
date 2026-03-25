@@ -4,6 +4,13 @@
 Не зависит от arcade. Используется только для расчёта физики.
 """
 
+from .contact import (
+    ContactInput,
+    ContactParams,
+    ContactResult,
+    compute_contact,
+    init_contact_state,
+)
 from .model import PhysicsModel
 from .spikes import (
     SpikesInput,
@@ -42,6 +49,12 @@ from .sim_types import (
 )
 
 __all__ = [
+    # Contact
+    "ContactInput",
+    "ContactParams",
+    "ContactResult",
+    "compute_contact",
+    "init_contact_state",
     # Model
     "PhysicsModel",
     # Spikes
