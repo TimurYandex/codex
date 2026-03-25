@@ -212,13 +212,14 @@ class PhysicsModel:
         # Расчёт эквивалентных параметров поверхности
         self._eq_params = compute_equivalent_params(params.surface)
 
-        # Параметры контакта
+        # Параметры контакта (используем реалистичные значения)
         self._contact_params = ContactParams(
-            k_c=params.ball.k,
-            c_c=params.ball.c,
+            k_c=5000,  # Жёсткость контакта, Н/м^p
+            c_c=50,  # Демпфирование контакта, Н·с/м
             k_s=self._eq_params.k_t_eq,
             mu_s=self._eq_params.mu_s_eq,
             mu_k=min(self._eq_params.mu_k_eq, self._eq_params.mu_s_eq),
+            p=1.0,  # Линейная зависимость (вместо 1.35)
         )
 
         # Инициализация поверхности
